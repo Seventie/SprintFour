@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import Landing from './pages/Landing';
 import Upload from './pages/Upload';
 import Review from './pages/Review';
+import { ReviewProvider } from './context/ReviewContext';
 
 function App() {
   const cursorRef = useRef(null);
@@ -19,7 +20,7 @@ function App() {
   }, []);
 
   return (
-    <>
+    <ReviewProvider>
       <div id="custom-cursor" ref={cursorRef}></div>
       <Router>
         <Routes>
@@ -28,7 +29,7 @@ function App() {
           <Route path="/review" element={<Review />} />
         </Routes>
       </Router>
-    </>
+    </ReviewProvider>
   );
 }
 
