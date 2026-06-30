@@ -2,7 +2,7 @@
 
 # 🎥 Submission Video
 > **📺 Watch the demo here:**  
-> https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing
+> [https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
 
 > **⚡ Recommended:** Watch the video at **1.75× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<, I missed a feature in the video so non redacted or anonymised words when clicked you will get a reasoning from local llm of why they were not redacted 
 
