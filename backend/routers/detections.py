@@ -8,6 +8,7 @@ router = APIRouter()
 
 class CorrectionRequest(BaseModel):
     status: str
+    action_mode: Optional[str] = None  # "redact" or "anonymize"
     doc_id: Optional[str] = None
     detection: Optional[Dict] = None
 
@@ -20,13 +21,15 @@ class AddDetectionRequest(BaseModel):
 
 @router.patch("/api/detection/{detection_id}")
 async def update_detection(detection_id: str, req: CorrectionRequest):
-    """Update the status of a detection (accept, reject, flag, dismiss)."""
+    """Update the status and action_mode of a detection."""
     # 1. Check in-memory detections
     for doc_id, dets in state.detections.items():
         for det in dets:
             if det["id"] == detection_id:
                 old_status = det["status"]
                 det["status"] = req.status
+                if req.action_mode:
+                    det["action_mode"] = req.action_mode
                 state.save_state()
                 return {"ok": True, "detection": det, "previous_status": old_status}
     
@@ -37,6 +40,8 @@ async def update_detection(detection_id: str, req: CorrectionRequest):
             if det["id"] == detection_id:
                 old_status = det["status"]
                 det["status"] = req.status
+                if req.action_mode:
+                    det["action_mode"] = req.action_mode
                 state.save_state()
                 return {"ok": True, "detection": det, "previous_status": old_status}
 
@@ -48,10 +53,14 @@ async def update_detection(detection_id: str, req: CorrectionRequest):
         det = dict(req.detection)
         old_status = det.get("status", "missed")
         det["status"] = req.status
+        if req.action_mode:
+            det["action_mode"] = req.action_mode
         
         found = False
         for i, existing in enumerate(state.detections[req.doc_id]):
             if existing["id"] == detection_id or (existing.get("char_start") == det.get("char_start") and existing.get("char_end") == det.get("char_end")):
+                if req.action_mode:
+                    det["action_mode"] = req.action_mode
                 state.detections[req.doc_id][i] = det
                 found = True
                 break

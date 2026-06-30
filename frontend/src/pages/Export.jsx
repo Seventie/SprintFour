@@ -15,6 +15,7 @@ const Export = () => {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [textPreviewContent, setTextPreviewContent] = useState(null);
   const [strippedMeta, setStrippedMeta] = useState([]);
+  const [exportMode, setExportMode] = useState('redact');
 
   useEffect(() => {
     if (documents.length === 0) navigate('/upload');
@@ -53,6 +54,7 @@ const Export = () => {
           filename: activeDoc.filename,
           detections: activeDetections,
           content: activeDoc?.content || activeDoc?.plain_text || '',
+          export_mode: exportMode,
         }, { responseType: 'blob' });
 
         // Read stripped metadata header
@@ -82,15 +84,17 @@ const Export = () => {
 
     fetchPreview();
     return () => { if (previewUrl) window.URL.revokeObjectURL(previewUrl); };
-  }, [activeDocId, missedCount]);
+  }, [activeDocId, missedCount, exportMode]);
 
   const handleDownload = async () => {
     if (!activeDoc || missedCount > 0) return;
 
+    const prefix = exportMode === 'anonymize' ? 'anonymized_' : 'redacted_';
+
     if (previewUrl) {
       const link = document.createElement('a');
       link.href = previewUrl;
-      link.setAttribute('download', `redacted_${activeDoc.filename}`);
+      link.setAttribute('download', `${prefix}${activeDoc.filename}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -106,12 +110,13 @@ const Export = () => {
         filename: activeDoc.filename,
         detections: activeDetections,
         content: activeDoc?.content || activeDoc?.plain_text || '',
+        export_mode: exportMode,
       }, { responseType: 'blob' });
 
       const url = window.URL.createObjectURL(new Blob([resp.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `redacted_${activeDoc.filename}`);
+      link.setAttribute('download', `${prefix}${activeDoc.filename}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -254,6 +259,25 @@ const Export = () => {
                 </div>
               </div>
 
+              {/* Security Mode Selector */}
+              <div className="bg-white border-2 border-black rounded-3xl p-5 shadow-brutalist-sm space-y-3">
+                <span className="text-xs font-bold text-black uppercase tracking-widest block font-mono">Security Output Mode</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setExportMode('redact')}
+                    className={`py-2.5 px-3 rounded-2xl font-bold text-xs border-2 transition-all flex items-center justify-center gap-1.5 ${exportMode === 'redact' ? 'bg-primary text-white border-black shadow-retro' : 'bg-aura-cream text-black border-black/30 hover:border-black'}`}
+                  >
+                    Redact (Blackout)
+                  </button>
+                  <button
+                    onClick={() => setExportMode('anonymize')}
+                    className={`py-2.5 px-3 rounded-2xl font-bold text-xs border-2 transition-all flex items-center justify-center gap-1.5 ${exportMode === 'anonymize' ? 'bg-secondary text-black border-black shadow-retro' : 'bg-aura-cream text-black border-black/30 hover:border-black'}`}
+                  >
+                    Anonymize (Synthetic)
+                  </button>
+                </div>
+              </div>
+
               {/* Compact Guarantee Checklist */}
               <div className="bg-white border-2 border-black rounded-3xl p-5 shadow-brutalist-sm space-y-3">
                 <span className="text-xs font-bold text-black uppercase tracking-widest block font-mono">Export Guarantees</span>
@@ -299,7 +323,7 @@ const Export = () => {
               {downloadComplete ? (
                 <><CheckCircle className="w-5 h-5" /> Download Complete</>
               ) : (
-                <><Download className="w-5 h-5" /> {isExporting ? 'Generating...' : missedCount > 0 ? 'Resolve Pending Items' : `Download Redacted ${activeDoc.file_type.toUpperCase()}`}</>
+                <><Download className="w-5 h-5" /> {isExporting ? 'Generating...' : missedCount > 0 ? 'Resolve Pending Items' : `Download ${exportMode === 'anonymize' ? 'Anonymized' : 'Redacted'} ${activeDoc.file_type.toUpperCase()}`}</>
               )}
             </button>
           </div>

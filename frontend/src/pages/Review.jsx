@@ -432,26 +432,41 @@ const Review = () => {
                 </div>
               </div>
 
-              {/* Compact Actions */}
+              {/* Compact Actions: Redact vs Anonymize vs Dismiss */}
               {explanation.is_detection && activeDetection && (
                 <div className="space-y-2 pt-1">
                   {activeDetection.status === 'missed' || activeDetection.status === 'false_positive' ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleAction('redacted')} className="flex-1 bg-primary text-white py-3 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
-                        <span className="material-symbols-outlined text-[16px]">check</span> Accept
-                      </button>
-                      <button onClick={() => handleAction('dismissed')} className="flex-1 bg-white text-black py-3 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
-                        <span className="material-symbols-outlined text-[16px]">close</span> Dismiss
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleAction('redacted', 'redact')} className="flex-1 bg-primary text-white py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
+                          <span className="material-symbols-outlined text-[16px]">ink_eraser</span> Redact (Blackout)
+                        </button>
+                        <button onClick={() => handleAction('redacted', 'anonymize')} className="flex-1 bg-secondary text-black py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
+                          <span className="material-symbols-outlined text-[16px]">masks</span> Anonymize (Synthetic)
+                        </button>
+                      </div>
+                      <button onClick={() => handleAction('dismissed')} className="w-full bg-white text-black py-2 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
+                        <span className="material-symbols-outlined text-[16px]">close</span> Dismiss (Keep Safe)
                       </button>
                     </div>
                   ) : activeDetection.status === 'redacted' ? (
-                    <button onClick={() => handleAction('missed')} className="w-full bg-white text-black py-3 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
-                      <span className="material-symbols-outlined text-[16px]">undo</span> Undo Redaction
-                    </button>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center text-xs font-bold text-emerald-700 bg-emerald-50 py-2 rounded-2xl border border-emerald-300">
+                        Mode: {activeDetection.action_mode === 'anonymize' ? 'Synthetic Anonymization' : 'Blackout Redaction'}
+                      </div>
+                      <button onClick={() => handleAction('missed')} className="w-full bg-white text-black py-2.5 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
+                        <span className="material-symbols-outlined text-[16px]">undo</span> Undo Action
+                      </button>
+                    </div>
                   ) : (
-                    <button onClick={() => handleAction('redacted')} className="w-full bg-primary text-white py-3 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
-                      <span className="material-symbols-outlined text-[16px]">check</span> Re-Redact
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleAction('redacted', 'redact')} className="flex-1 bg-primary text-white py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
+                        <span className="material-symbols-outlined text-[16px]">ink_eraser</span> Redact
+                      </button>
+                      <button onClick={() => handleAction('redacted', 'anonymize')} className="flex-1 bg-secondary text-black py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
+                        <span className="material-symbols-outlined text-[16px]">masks</span> Anonymize
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -510,20 +525,27 @@ const Review = () => {
                           </div>
                           <span className="text-xs font-bold text-black truncate block">&ldquo;{item.text}&rdquo;</span>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 shrink-0">
                           <button
-                            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'UPDATE_DETECTION_STATUS', payload: { docId: activeDocId, detectionId: item.id, status: 'redacted' } }); axios.patch(`http://localhost:8000/api/detection/${item.id}`, { status: 'redacted' }).catch(() => {}); }}
-                            className="w-7 h-7 rounded-xl bg-secondary border border-black flex items-center justify-center hover:scale-110 transition-transform"
-                            title="Accept"
+                            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'UPDATE_DETECTION_STATUS', payload: { docId: activeDocId, detectionId: item.id, status: 'redacted', actionMode: 'redact' } }); axios.patch(`http://localhost:8000/api/detection/${item.id}`, { status: 'redacted', action_mode: 'redact' }).catch(() => {}); }}
+                            className="w-7 h-7 rounded-xl bg-primary text-white border border-black flex items-center justify-center hover:scale-110 transition-transform"
+                            title="Redact (Blackout)"
                           >
-                            <span className="material-symbols-outlined text-black text-[16px]">check</span>
+                            <span className="material-symbols-outlined text-[15px]">ink_eraser</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); dispatch({ type: 'UPDATE_DETECTION_STATUS', payload: { docId: activeDocId, detectionId: item.id, status: 'redacted', actionMode: 'anonymize' } }); axios.patch(`http://localhost:8000/api/detection/${item.id}`, { status: 'redacted', action_mode: 'anonymize' }).catch(() => {}); }}
+                            className="w-7 h-7 rounded-xl bg-secondary text-black border border-black flex items-center justify-center hover:scale-110 transition-transform"
+                            title="Anonymize (Synthetic)"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">masks</span>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); dispatch({ type: 'UPDATE_DETECTION_STATUS', payload: { docId: activeDocId, detectionId: item.id, status: 'dismissed' } }); axios.patch(`http://localhost:8000/api/detection/${item.id}`, { status: 'dismissed' }).catch(() => {}); }}
-                            className="w-7 h-7 rounded-xl bg-white border border-black flex items-center justify-center hover:scale-110 transition-transform"
+                            className="w-7 h-7 rounded-xl bg-white text-black border border-black flex items-center justify-center hover:scale-110 transition-transform"
                             title="Dismiss"
                           >
-                            <span className="material-symbols-outlined text-black text-[16px]">close</span>
+                            <span className="material-symbols-outlined text-[15px]">close</span>
                           </button>
                         </div>
                       </div>

@@ -64,9 +64,9 @@ function reviewReducer(state, action) {
     case 'SET_PROCESSING':
       return { ...state, isProcessing: action.payload };
     case 'UPDATE_DETECTION_STATUS': {
-      const { docId, detectionId, status } = action.payload;
+      const { docId, detectionId, status, actionMode } = action.payload;
       const docDetections = (state.detections[docId] || []).map(d =>
-        d.id === detectionId ? { ...d, status } : d
+        d.id === detectionId ? { ...d, status, ...(actionMode ? { action_mode: actionMode } : {}) } : d
       );
       const prevDetection = (state.detections[docId] || []).find(d => d.id === detectionId);
       const newHistory = [

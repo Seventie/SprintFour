@@ -19,12 +19,37 @@ class Detection(BaseModel):
     confidence: float
     status: str
     reason: str
+    action_mode: Optional[str] = "redact"  # "redact" or "anonymize"
 
 class ExportRequest(BaseModel):
     doc_id: str
     filename: str
     detections: List[Detection]
     content: Optional[str] = None
+    export_mode: Optional[str] = "redact"  # "redact" or "anonymize"
+
+
+ANONYMIZED_REPLACEMENTS = {
+    "PERSON": "[John Doe]",
+    "EMAIL_ADDRESS": "[user@domain.com]",
+    "PHONE_NUMBER": "[555-0199]",
+    "CREDIT_CARD": "[XXXX-XXXX-XXXX-1234]",
+    "DATE_TIME": "[2026-01-01]",
+    "IP_ADDRESS": "[192.0.2.1]",
+    "LOCATION": "[City, Country]",
+    "NRP": "[Protected Group]",
+    "MEDICAL_LICENSE": "[MD-999999]",
+    "URL": "[https://secure-domain.com]",
+    "US_SSN": "[XXX-XX-0000]",
+    "US_DRIVER_LICENSE": "[DL-XXXXX]",
+}
+
+
+def get_replacement_text(det: Detection, global_mode: str) -> str:
+    mode = det.action_mode if det.action_mode in ("redact", "anonymize") else global_mode
+    if mode == "anonymize":
+        return ANONYMIZED_REPLACEMENTS.get(det.type, "[ANONYMIZED]")
+    return "[REDACTED]"
 
 
 def strip_pdf_metadata(doc):
@@ -35,7 +60,6 @@ def strip_pdf_metadata(doc):
     for key in sensitive_keys:
         if metadata.get(key):
             stripped_fields.append(key)
-    # Clear all metadata
     doc.set_metadata({
         'author': '',
         'creator': 'Conseal Redaction Engine',
@@ -52,7 +76,6 @@ def strip_pdf_metadata(doc):
 def strip_docx_metadata(doc):
     """Strip metadata, comments, and tracked changes from DOCX."""
     stripped_fields = []
-    # Clear core properties
     cp = doc.core_properties
     if cp.author:
         stripped_fields.append('author')
@@ -75,10 +98,7 @@ def strip_docx_metadata(doc):
     if cp.category:
         stripped_fields.append('category')
         cp.category = ''
-    # Remove comments from document body
-    # Comments are stored as w:comment elements in the comments part
     try:
-        from docx.opc.constants import RELATIONSHIP_TYPE as RT
         comments_part = None
         for rel in doc.part.rels.values():
             if 'comments' in str(rel.reltype).lower():
@@ -88,75 +108,78 @@ def strip_docx_metadata(doc):
             stripped_fields.append('inline_comments')
     except Exception:
         pass
-    # Remove tracked changes (accept all revisions by keeping current text)
-    # This is handled by python-docx reading the current state
     return stripped_fields
 
 
-def redact_pdf(file_bytes: bytes, detections: List[Detection]) -> bytes:
+def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     doc = fitz.open(stream=file_bytes, filetype="pdf")
     for page in doc:
         for det in detections:
             text_instances = page.search_for(det.text)
+            mode = det.action_mode if det.action_mode in ("redact", "anonymize") else global_mode
+            replacement = get_replacement_text(det, global_mode)
             for inst in text_instances:
-                page.add_redact_annot(inst, fill=(0, 0, 0))
+                if mode == "anonymize":
+                    page.add_redact_annot(inst, text=replacement, fill=(0.95, 0.95, 0.95), text_color=(0, 0, 0), fontsize=9)
+                else:
+                    page.add_redact_annot(inst, fill=(0, 0, 0))
         page.apply_redactions()
-    # Strip metadata
     stripped = strip_pdf_metadata(doc)
     out_pdf = doc.write()
     doc.close()
     return out_pdf, stripped
 
 
-def redact_docx(file_bytes: bytes, detections: List[Detection]) -> bytes:
+def redact_docx(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     doc = Document(BytesIO(file_bytes))
-    # Strip metadata first
     stripped = strip_docx_metadata(doc)
-    # Redact text in paragraphs
     for para in doc.paragraphs:
         for det in detections:
             if det.text in para.text:
+                rep = get_replacement_text(det, global_mode)
                 for run in para.runs:
                     if det.text in run.text:
-                        run.text = run.text.replace(det.text, "[REDACTED]")
-    # Also check tables
+                        run.text = run.text.replace(det.text, rep)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for det in detections:
                     if det.text in cell.text:
+                        rep = get_replacement_text(det, global_mode)
                         for para in cell.paragraphs:
                             for run in para.runs:
                                 if det.text in run.text:
-                                    run.text = run.text.replace(det.text, "[REDACTED]")
-    # Check headers and footers
+                                    run.text = run.text.replace(det.text, rep)
     for section in doc.sections:
         for header in [section.header, section.first_page_header, section.even_page_header]:
             if header and header.is_linked_to_previous is False:
                 for para in header.paragraphs:
                     for det in detections:
                         if det.text in para.text:
+                            rep = get_replacement_text(det, global_mode)
                             for run in para.runs:
                                 if det.text in run.text:
-                                    run.text = run.text.replace(det.text, "[REDACTED]")
+                                    run.text = run.text.replace(det.text, rep)
         for footer in [section.footer, section.first_page_footer, section.even_page_footer]:
             if footer and footer.is_linked_to_previous is False:
                 for para in footer.paragraphs:
                     for det in detections:
                         if det.text in para.text:
+                            rep = get_replacement_text(det, global_mode)
                             for run in para.runs:
                                 if det.text in run.text:
-                                    run.text = run.text.replace(det.text, "[REDACTED]")
+                                    run.text = run.text.replace(det.text, rep)
     out_io = BytesIO()
     doc.save(out_io)
     return out_io.getvalue(), stripped
 
 
-def redact_txt(file_bytes: bytes, detections: List[Detection]) -> bytes:
+def redact_txt(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     text = file_bytes.decode('utf-8', errors='ignore')
     sorted_dets = sorted(detections, key=lambda x: x.char_start, reverse=True)
     for det in sorted_dets:
-        text = text[:det.char_start] + "[REDACTED]" + text[det.char_end:]
+        rep = get_replacement_text(det, global_mode)
+        text = text[:det.char_start] + rep + text[det.char_end:]
     return text.encode('utf-8'), []
 
 
@@ -167,17 +190,18 @@ async def export_document(req: ExportRequest):
     
     filename = req.filename.lower()
     redacted_items = [d for d in req.detections if d.status == 'redacted' or d.status == 'added']
+    global_mode = req.export_mode or "redact"
 
     if req.doc_id in state.original_files:
         original_bytes = state.original_files[req.doc_id]
         if filename.endswith(".pdf"):
-            output_bytes, stripped_meta = redact_pdf(original_bytes, redacted_items)
+            output_bytes, stripped_meta = redact_pdf(original_bytes, redacted_items, global_mode)
             media_type = "application/pdf"
         elif filename.endswith(".docx"):
-            output_bytes, stripped_meta = redact_docx(original_bytes, redacted_items)
+            output_bytes, stripped_meta = redact_docx(original_bytes, redacted_items, global_mode)
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else:
-            output_bytes, stripped_meta = redact_txt(original_bytes, redacted_items)
+            output_bytes, stripped_meta = redact_txt(original_bytes, redacted_items, global_mode)
             media_type = "text/plain"
     else:
         text_content = req.content or state.documents.get(req.doc_id, {}).get("content", "")
@@ -186,7 +210,8 @@ async def export_document(req: ExportRequest):
         
         sorted_dets = sorted(redacted_items, key=lambda x: x.char_start, reverse=True)
         for det in sorted_dets:
-            text_content = text_content[:det.char_start] + "[REDACTED]" + text_content[det.char_end:]
+            rep = get_replacement_text(det, global_mode)
+            text_content = text_content[:det.char_start] + rep + text_content[det.char_end:]
         
         if filename.endswith(".pdf"):
             doc = fitz.open()
@@ -214,7 +239,7 @@ async def export_document(req: ExportRequest):
         content=output_bytes,
         media_type=media_type,
         headers={
-            "Content-Disposition": f"attachment; filename=redacted_{req.filename}",
+            "Content-Disposition": f"attachment; filename=secured_{req.filename}",
             "X-Stripped-Metadata": json.dumps(stripped_meta),
         }
     )
