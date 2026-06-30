@@ -6,7 +6,7 @@
 
 
 
-> Little debugging after video was recorded : Had a bug in my code that wasnot redacting my text files and documents have solved the bug and below is the result
+> Little debugging after video was recorded : Had a bug in my code that wasnot redacting my text files and documents have solved the bug and below is the result and moved to local llm rather than groq api key 
 > <img width="1172" height="1042" alt="image" src="https://github.com/user-attachments/assets/9113c8cb-b104-4b8f-8ac5-5b83a6c6d908" />
 
 > **⚡ Recommended:** Watch the video at **1.5× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
