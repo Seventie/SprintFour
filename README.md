@@ -4,14 +4,14 @@
 > **📺 Watch the demo here:**  
 > [https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
 
-> **⚡ Recommended:** Watch the video at **1.75× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<, I missed a feature in the video so non redacted or anonymised words when clicked you will get a reasoning from local llm of why they were not redacted 
+> **⚡ Recommended:** Watch the video at **1.5× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
 
-## ▶️ How to Watch at 1.75× Speed (Google Drive)
+## ▶️ How to Watch at 1.5× Speed (Google Drive)
 
 1. Open the video using the link above.
 2. Click **View** in the top menu.
 3. Select **Playback speed**.
-4. Choose **1.75×**.
+4. Choose **1.5×**.
 
 ---
 
