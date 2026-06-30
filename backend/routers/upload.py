@@ -4,6 +4,7 @@ from docx import Document
 import uuid
 from typing import List, Optional
 from io import BytesIO
+import csv
 from presidio_analyzer import AnalyzerEngine
 import state
 from services.heuristic import run_heuristic_detection, merge_detections, align_detection_boundaries
@@ -21,29 +22,23 @@ def assign_status(confidence: float) -> str:
     elif confidence >= 0.50:
         return "missed"
     else:
-        return "false_positive"
+        return "fp"
 
 
 # --- Contextual reason generation ---
 REASON_TEMPLATES = {
-    "PERSON":           "Detected personal name via NLP entity recognition",
-    "EMAIL_ADDRESS":    "Matches standard email address format (user@domain)",
-    "PHONE_NUMBER":     "Matches phone number pattern",
-    "CREDIT_CARD":      "Matches credit/debit card number format",
-    "DATE_TIME":        "Detected date/time expression",
-    "IP_ADDRESS":       "Matches IPv4/IPv6 address pattern",
-    "LOCATION":         "Detected geographic location or address",
-    "NRP":              "Detected nationality, religion, or political group",
-    "MEDICAL_LICENSE":  "Matches medical license number format",
-    "URL":              "Detected URL/web address",
-    "US_SSN":           "Matches US Social Security Number format",
-    "US_DRIVER_LICENSE":"Matches US driver's license format",
-    "US_PASSPORT":      "Matches US passport number format",
-    "UK_NHS":           "Matches UK NHS number format",
-    "US_BANK_NUMBER":   "Matches US bank account number format",
-    "US_ITIN":          "Matches US Individual Taxpayer ID Number",
-    "IN_PAN":           "Matches Indian PAN card format (XXXXX0000X)",
-    "IN_AADHAAR":       "Matches Indian Aadhaar number format (XXXX XXXX XXXX)",
+    "PERSON": "Presidio NLP identified a human personal name",
+    "EMAIL_ADDRESS": "Regex/NLP matched standard RFC email address format",
+    "PHONE_NUMBER": "Pattern matched standard telephone number structure",
+    "CREDIT_CARD": "Luhn algorithm validated payment card number format",
+    "DATE_TIME": "Entity recognizer flagged temporal/date reference",
+    "IP_ADDRESS": "Regex matched IPv4/IPv6 network address format",
+    "LOCATION": "Named Entity Recognition flagged geographic place/address",
+    "NRP": "Pattern matched nationality, religious, or political group reference",
+    "MEDICAL_LICENSE": "Pattern matched medical license number format",
+    "URL": "Regex matched web URL/URI protocol format",
+    "US_SSN": "Pattern matched United States Social Security Number",
+    "US_DRIVER_LICENSE": "Pattern matched state driver license ID number",
 }
 
 
@@ -69,6 +64,33 @@ def extract_text_from_docx(file_bytes):
     doc = Document(BytesIO(file_bytes))
     text = "\n".join([para.text for para in doc.paragraphs])
     return text
+
+
+def extract_text_from_csv(file_bytes):
+    text = file_bytes.decode('utf-8', errors='ignore')
+    lines = []
+    reader = csv.reader(text.splitlines())
+    for row in reader:
+        lines.append(" | ".join([cell.strip() for cell in row if cell.strip()]))
+    return "\n".join(lines)
+
+
+def extract_text_from_excel(file_bytes):
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True)
+        lines = []
+        for sheet in wb.sheetnames:
+            ws = wb[sheet]
+            lines.append(f"--- Sheet: {sheet} ---")
+            for row in ws.iter_rows(values_only=True):
+                row_vals = [str(cell).strip() for cell in row if cell is not None and str(cell).strip() != ""]
+                if row_vals:
+                    lines.append(" | ".join(row_vals))
+        return "\n".join(lines)
+    except Exception as e:
+        print("Excel extraction error:", e)
+        return file_bytes.decode('utf-8', errors='ignore')
 
 
 def extract_text_from_txt(file_bytes):
@@ -129,8 +151,15 @@ async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional
         elif filename.endswith(".docx"):
             text = extract_text_from_docx(contents)
             file_type = "docx"
+        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+            text = extract_text_from_excel(contents)
+            file_type = "xlsx"
+        elif filename.endswith(".csv"):
+            text = extract_text_from_csv(contents)
+            file_type = "csv"
         else:
             text = extract_text_from_txt(contents)
+            file_type = "txt"
 
         doc_id = str(uuid.uuid4())
         state.original_files[doc_id] = contents

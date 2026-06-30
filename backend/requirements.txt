@@ -10,3 +10,5 @@ presidio-analyzer
 presidio-anonymizer
 spacy
 httpx
+openpyxl
+pandas

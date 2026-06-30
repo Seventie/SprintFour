@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReview } from '../context/ReviewContext';
 import HighlightSpan from '../components/review/HighlightSpan';
+import InteractivePdfViewer from '../components/review/InteractivePdfViewer';
 import axios from 'axios';
 
 const Review = () => {
@@ -16,8 +17,37 @@ const Review = () => {
   const [viewMode, setViewMode] = useState('parsed');
   const [panelMode, setPanelMode] = useState('docked'); // 'docked' | 'floating' | 'minimized'
   const [pdfSearchQuery, setPdfSearchQuery] = useState('');
+  const [floatingPos, setFloatingPos] = useState({ x: Math.max(50, window.innerWidth - 460), y: 80 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const viewerRef = useRef(null);
   const detectionRefs = useRef({});
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      setFloatingPos({
+        x: Math.max(0, Math.min(window.innerWidth - 300, e.clientX - dragOffset.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y))
+      });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  const handleMouseDownHeader = (e) => {
+    if (panelMode !== 'floating') return;
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - floatingPos.x,
+      y: e.clientY - floatingPos.y
+    });
+  };
 
   const { activeDocId, documents, detections, sidebarOpen, history } = state;
 
@@ -400,10 +430,9 @@ const Review = () => {
         <div ref={viewerRef} className="flex-1 overflow-auto p-6 bg-aura-cream dark:bg-background-dark flex justify-center items-start pt-6" onClick={() => { setActiveDetection(null); setExplanation(null); }}>
           {viewMode === 'pdf' && activeDoc?.file_type === 'pdf' ? (
             <div className="w-full h-full bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden">
-              <iframe
-                src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0${pdfSearchQuery ? `&search=${encodeURIComponent(pdfSearchQuery)}` : ''}`}
-                className="w-full h-full border-none"
-                title="Original PDF Preview"
+              <InteractivePdfViewer
+                fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
+                searchQuery={pdfSearchQuery}
               />
             </div>
           ) : viewMode === 'split' && activeDoc?.file_type === 'pdf' ? (
@@ -415,14 +444,9 @@ const Review = () => {
                 </div>
               </div>
               <div className="bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden flex flex-col">
-                <div className="bg-card-yellow border-b-2 border-black px-4 py-2 text-xs font-bold text-black uppercase tracking-wider flex items-center justify-between">
-                  <span>Original PDF Layout Preview</span>
-                  {pdfSearchQuery && <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-black text-black">Highlighting: "{pdfSearchQuery}"</span>}
-                </div>
-                <iframe
-                  src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0${pdfSearchQuery ? `&search=${encodeURIComponent(pdfSearchQuery)}` : ''}`}
-                  className="w-full flex-1 border-none"
-                  title="Original PDF Preview"
+                <InteractivePdfViewer
+                  fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
+                  searchQuery={pdfSearchQuery}
                 />
               </div>
             </div>
@@ -463,10 +487,16 @@ const Review = () => {
           Show Reasoning & Triage ({attentionItems.length} left)
         </button>
       ) : (
-      <aside className={panelMode === 'floating' ? "fixed bottom-6 right-6 z-40 w-[420px] max-h-[78vh] bg-card-purple flex flex-col rounded-3xl border-2 border-black shadow-brutalist-lg overflow-hidden animate-scale-in" : "pane-right w-[400px] shrink-0 h-full bg-card-purple flex flex-col z-0 overflow-hidden border-l-2 border-black"}>
+      <aside
+        style={panelMode === 'floating' ? { left: `${floatingPos.x}px`, top: `${floatingPos.y}px` } : {}}
+        className={panelMode === 'floating' ? "fixed z-40 w-[420px] max-h-[78vh] bg-card-purple flex flex-col rounded-3xl border-2 border-black shadow-brutalist-lg overflow-hidden animate-scale-in" : "pane-right w-[400px] shrink-0 h-full bg-card-purple flex flex-col z-0 overflow-hidden border-l-2 border-black"}
+      >
         {/* Panel Header */}
-        <header className="h-14 flex items-center justify-between px-4 border-b-2 border-black shrink-0 bg-card-blue">
-          <span className="text-xs font-bold text-black uppercase tracking-widest font-mono">Reasoning & Triage</span>
+        <header onMouseDown={handleMouseDownHeader} className={`h-14 flex items-center justify-between px-4 border-b-2 border-black shrink-0 bg-card-blue ${panelMode === 'floating' ? 'cursor-move select-none' : ''}`}>
+          <span className="text-xs font-bold text-black uppercase tracking-widest font-mono flex items-center gap-1.5">
+            {panelMode === 'floating' && <span className="material-symbols-outlined text-[14px]">drag_indicator</span>}
+            Reasoning & Triage
+          </span>
           <div className="flex items-center gap-1.5">
             <button onClick={() => setPanelMode(panelMode === 'docked' ? 'floating' : 'docked')} className="p-1 bg-white hover:bg-gray-100 rounded-full border border-black text-black shadow-brutalist-xs flex items-center justify-center" title={panelMode === 'docked' ? "Float Window" : "Dock Window"}>
               <span className="material-symbols-outlined text-[14px] leading-none">{panelMode === 'docked' ? 'open_in_new' : 'dock_to_right'}</span>

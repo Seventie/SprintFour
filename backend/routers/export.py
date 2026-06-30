@@ -183,6 +183,38 @@ def redact_txt(file_bytes: bytes, detections: List[Detection], global_mode: str)
     return text.encode('utf-8'), []
 
 
+def redact_csv(file_bytes: bytes, detections: List[Detection], global_mode: str):
+    text = file_bytes.decode('utf-8', errors='ignore')
+    sorted_dets = sorted(detections, key=lambda x: x.char_start, reverse=True)
+    for det in sorted_dets:
+        rep = get_replacement_text(det, global_mode)
+        text = text[:det.char_start] + rep + text[det.char_end:]
+    return text.encode('utf-8'), []
+
+
+def redact_excel(file_bytes: bytes, detections: List[Detection], global_mode: str):
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(file_bytes))
+        for sheet in wb.sheetnames:
+            ws = wb[sheet]
+            for row in ws.iter_rows():
+                for cell in row:
+                    if cell.value and isinstance(cell.value, str):
+                        val = cell.value
+                        for det in sorted(detections, key=lambda x: len(x.text), reverse=True):
+                            if det.text in val:
+                                rep = get_replacement_text(det, global_mode)
+                                val = val.replace(det.text, rep)
+                        cell.value = val
+        out = BytesIO()
+        wb.save(out)
+        return out.getvalue(), ["author", "last_modified_by"]
+    except Exception as e:
+        print("Excel export error:", e)
+        return redact_csv(file_bytes, detections, global_mode)
+
+
 @router.post("/api/export")
 async def export_document(req: ExportRequest):
     if req.doc_id not in state.original_files:
@@ -200,6 +232,12 @@ async def export_document(req: ExportRequest):
         elif filename.endswith(".docx"):
             output_bytes, stripped_meta = redact_docx(original_bytes, redacted_items, global_mode)
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+            output_bytes, stripped_meta = redact_excel(original_bytes, redacted_items, global_mode)
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif filename.endswith(".csv"):
+            output_bytes, stripped_meta = redact_csv(original_bytes, redacted_items, global_mode)
+            media_type = "text/csv"
         else:
             output_bytes, stripped_meta = redact_txt(original_bytes, redacted_items, global_mode)
             media_type = "text/plain"

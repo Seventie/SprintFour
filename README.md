@@ -1,44 +1,46 @@
 # Conseal Hackathon Project (SprintFour 2026)
 
-Conseal is a desktop application built to anonymize documents by automatically redacting or labeling personally identifying information (PII). This allows documents to be safely shared with AI tools without leaking private data. 
+Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
-For this hackathon, we built a full-stack prototype focused on a robust **Review Workspace** and **Redaction Engine**.
+## Key Capabilities & Supported Formats
 
-## Phase 1: Git & Backend Foundation
-- A stateless FastAPI backend architecture designed for zero data retention.
-- `state.py` handles mock session data to simulate processing constraints without needing a DB.
-- Comprehensive REST APIs for upload, retrieval, and exporting.
+Conseal natively supports multi-format document ingestion and processing:
+- **PDF Documents (`.pdf`)**: Layout extraction and interactive visual DOM rendering via `react-pdf` with real-time highlight synchronization.
+- **Microsoft Word (`.docx`)**: Paragraph and table structure extraction with clean metadata sanitization.
+- **Spreadsheets (`.xlsx`, `.xls`, `.csv`)**: Full multi-sheet Excel workbook and CSV table parsing via `openpyxl` and `pandas`, allowing cell-by-cell PII detection and redaction.
+- **Plain Text (`.txt`)**: High-speed UTF-8 token analysis.
 
-## Phase 2: Frontend Foundation & Upload Flow
-- React + Vite + Tailwind CSS (v4) setup.
-- Developed an uncompromising **Cyber-Brutalism + Systematic Minimalism** UI/UX.
-- The `Upload.jsx` view strictly enforces local, in-memory guarantees with warning flags.
+## Core Architectural Phases & Features
 
-## Phase 3: The Review Workspace
-- **DocumentViewer**: Interactive token-level rendering of text, overlaying the model's predictions.
-- **InspectionPanel**: Offers a detailed view of confidence scores, extraction logic, and source context for each PII match.
-- **SummaryBar**: Blocks the user from exporting until all `missed` or `uncertain` entities are resolved. Tracks real-time session progress.
+### 1. Dual-Layer AI Detection Engine
+- **Transformer NLP Layer**: Integrated spaCy transformer model (`en_core_web_trf`) and Microsoft Presidio for contextual entity extraction (PERSON, EMAIL, PHONE, SSN, CREDIT_CARD, MEDICAL_LICENSE, etc.).
+- **Heuristic & Regex Layer**: High-precision fallback matching rules with word-boundary alignment to ensure exact character offsets.
 
-## Phase 4: Redaction Engine & Export
-- Backend `export.py` router takes the final state of all human-reviewed labels and accurately replaces the source strings with explicit `[PII_TYPE]` tokens.
-- Frontend directly triggers a secure download blob with the final output.
+### 2. Interactive Review Workspace
+- **Draggable & Floatable Reasoning Panel**: The Reasoning & Triage window can be docked to the sidebar, minimized into a floating pill (`⚡ Show Reasoning & Triage`), or detached into a draggable popover window positioned anywhere on the screen.
+- **Bidirectional Highlight Synchronization**: Selecting any word or entity in the Interactive Parsed View immediately highlights and pulses the matching text string directly inside the Original PDF Layout Preview using `react-pdf`.
+- **Per-Document Security Mode**: Users can toggle between **Redact (Blackout)** and **Anonymize ([Tag])** modes per file on upload or on individual entities.
 
-## How to Run
+### 3. Export & Sanitization
+- Exports clean documents in their native format (`.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`).
+- Strips hidden file metadata (author, title, creation history) via `X-Stripped-Metadata` headers.
 
-### 1. Backend
+## How to Run Locally
+
+### 1. Backend Service
 ```bash
 cd backend
 python -m venv venv
-# Activate your venv
+# Activate virtual environment (e.g., .\venv\Scripts\activate on Windows)
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
-Runs on `http://localhost:8000`.
+API Documentation available at `http://localhost:8000/docs`.
 
-### 2. Frontend
+### 2. Frontend Web Client
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Runs on `http://localhost:5173`.
+Web Application runs on `http://localhost:5173`.
