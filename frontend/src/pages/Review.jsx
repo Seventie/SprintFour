@@ -13,6 +13,7 @@ const Review = () => {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [undoToast, setUndoToast] = useState(null);
   const [reviewIdx, setReviewIdx] = useState(0);
+  const [viewMode, setViewMode] = useState('parsed');
   const viewerRef = useRef(null);
   const detectionRefs = useRef({});
 
@@ -181,6 +182,15 @@ const Review = () => {
     setShowBulkModal(false);
   };
 
+  const handleBulkUpdateAll = async (status) => {
+    if (!activeDocId) return;
+    dispatch({ type: 'BULK_UPDATE_ALL', payload: { docId: activeDocId, status } });
+    const pending = (detections[activeDocId] || []).filter(d => d.status === 'missed' || d.status === 'false_positive');
+    for (const d of pending) {
+      axios.patch(`http://localhost:8000/api/detection/${d.id}`, { status }).catch(() => {});
+    }
+  };
+
   const handleExport = () => {
     if (missedCount > 0) return;
     navigate('/export');
@@ -337,6 +347,28 @@ const Review = () => {
           <div className="flex items-center gap-3">
             <span className="font-display font-bold text-base text-black">{activeDoc?.filename}</span>
             <span className="text-xs font-bold text-black bg-white px-2.5 py-0.5 rounded-full border border-black uppercase">{activeDoc?.file_type}</span>
+            {activeDoc?.file_type === 'pdf' && (
+              <div className="flex bg-white rounded-xl border-2 border-black p-0.5 shadow-brutalist-xs ml-2">
+                <button
+                  onClick={() => setViewMode('parsed')}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'parsed' ? 'bg-primary text-white shadow-sm' : 'text-black hover:bg-gray-100'}`}
+                >
+                  Parsed View
+                </button>
+                <button
+                  onClick={() => setViewMode('pdf')}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'pdf' ? 'bg-secondary text-black shadow-sm' : 'text-black hover:bg-gray-100'}`}
+                >
+                  PDF View
+                </button>
+                <button
+                  onClick={() => setViewMode('split')}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'split' ? 'bg-card-purple text-black shadow-sm' : 'text-black hover:bg-gray-100'}`}
+                >
+                  Split View
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xs font-bold text-black uppercase tracking-wider bg-white/60 px-3 py-1 rounded-full border border-black">
@@ -350,13 +382,42 @@ const Review = () => {
         </header>
 
         {/* Document Canvas */}
-        <div ref={viewerRef} className="flex-1 overflow-auto p-8 bg-aura-cream dark:bg-background-dark flex justify-center items-start pt-10" onClick={() => { setActiveDetection(null); setExplanation(null); }}>
-          <div className="w-[700px] bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-14 relative doc-paper">
-            <div className="absolute top-6 right-6 border-2 border-black bg-card-purple text-black font-bold text-[10px] px-3 py-1 uppercase rounded-full tracking-widest shadow-[2px_2px_0px_0px_#000]">Confidential</div>
-            <div className="font-sans text-base text-gray-900 dark:text-gray-100 leading-[2.2] whitespace-pre-wrap">
-              {renderText()}
+        <div ref={viewerRef} className="flex-1 overflow-auto p-6 bg-aura-cream dark:bg-background-dark flex justify-center items-start pt-6" onClick={() => { setActiveDetection(null); setExplanation(null); }}>
+          {viewMode === 'pdf' && activeDoc?.file_type === 'pdf' ? (
+            <div className="w-full h-full bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden">
+              <iframe
+                src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0`}
+                className="w-full h-full border-none"
+                title="Original PDF Preview"
+              />
             </div>
-          </div>
+          ) : viewMode === 'split' && activeDoc?.file_type === 'pdf' ? (
+            <div className="w-full h-full grid grid-cols-2 gap-4">
+              <div className="bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-8 relative overflow-y-auto doc-paper">
+                <div className="absolute top-4 right-4 border-2 border-black bg-card-purple text-black font-bold text-[9px] px-2.5 py-0.5 uppercase rounded-full tracking-widest">Interactive Parsed</div>
+                <div className="font-sans text-sm text-gray-900 dark:text-gray-100 leading-[2.2] whitespace-pre-wrap pt-4">
+                  {renderText()}
+                </div>
+              </div>
+              <div className="bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden flex flex-col">
+                <div className="bg-card-yellow border-b-2 border-black px-4 py-2 text-xs font-bold text-black uppercase tracking-wider flex items-center justify-between">
+                  <span>Original PDF Layout Preview</span>
+                </div>
+                <iframe
+                  src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0`}
+                  className="w-full flex-1 border-none"
+                  title="Original PDF Preview"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="w-[700px] bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-14 relative doc-paper">
+              <div className="absolute top-6 right-6 border-2 border-black bg-card-purple text-black font-bold text-[10px] px-3 py-1 uppercase rounded-full tracking-widest shadow-[2px_2px_0px_0px_#000]">Confidential</div>
+              <div className="font-sans text-base text-gray-900 dark:text-gray-100 leading-[2.2] whitespace-pre-wrap">
+                {renderText()}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Status Strip */}

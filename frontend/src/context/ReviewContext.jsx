@@ -111,6 +111,29 @@ function reviewReducer(state, action) {
         history: [...state.history, bulkHistory].slice(-20),
       };
     }
+    case 'BULK_UPDATE_ALL': {
+      const { docId, status } = action.payload;
+      const docDets = (state.detections[docId] || []).map(d => {
+        if (d.status === 'missed' || d.status === 'false_positive') {
+          return { ...d, status };
+        }
+        return d;
+      });
+      const bulkHistory = {
+        type: 'BULK_RESTORE',
+        payload: {
+          docId,
+          previous: (state.detections[docId] || []).filter(
+            d => d.status === 'missed' || d.status === 'false_positive'
+          ).map(d => ({ detectionId: d.id, prevStatus: d.status }))
+        }
+      };
+      return {
+        ...state,
+        detections: { ...state.detections, [docId]: docDets },
+        history: [...state.history, bulkHistory].slice(-20),
+      };
+    }
     case 'UNDO': {
       if (state.history.length === 0) return state;
       const lastAction = state.history[state.history.length - 1];

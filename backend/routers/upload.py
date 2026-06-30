@@ -1,8 +1,8 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form
 import fitz  # PyMuPDF
 from docx import Document
 import uuid
-from typing import List
+from typing import List, Optional
 from io import BytesIO
 from presidio_analyzer import AnalyzerEngine
 import state
@@ -102,12 +102,20 @@ def detect_pii_presidio(text: str) -> List[dict]:
 
 
 @router.post("/api/upload")
-async def upload_files(files: List[UploadFile] = File(...)):
+async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional[str] = Form(None)):
     print(f"--- UPLOAD CALLED --- ({len(files)} files)")
+    modes_dict = {}
+    if file_modes:
+        try:
+            import json
+            modes_dict = json.loads(file_modes)
+        except Exception as e:
+            print("Failed parsing file_modes:", e)
+
     documents = []
     all_detections = {}
 
-    for file in files:
+    for idx, file in enumerate(files):
         contents = await file.read()
         print(f"Processing: {file.filename} ({len(contents)} bytes)")
         filename = file.filename.lower()
@@ -125,27 +133,21 @@ async def upload_files(files: List[UploadFile] = File(...)):
             text = extract_text_from_txt(contents)
 
         doc_id = str(uuid.uuid4())
-
-        # Store raw bytes for export
         state.original_files[doc_id] = contents
 
+        mode = modes_dict.get(str(idx)) or modes_dict.get(file.filename) or "redact"
+
         # --- Dual-layer detection ---
-        # Layer 1: Presidio NLP model
         model_dets = detect_pii_presidio(text)
-        print(f"  Presidio found {len(model_dets)} detections")
-
-        # Layer 2: Heuristic regex safety net
         heuristic_dets = run_heuristic_detection(text)
-        print(f"  Heuristic found {len(heuristic_dets)} detections")
 
-        # Merge without duplicates and align to exact word boundaries so emails/words are never cut in half
         merged_dets = merge_detections(model_dets, heuristic_dets)
         merged_dets = align_detection_boundaries(text, merged_dets)
-        print(f"  Merged total: {len(merged_dets)} detections")
 
         for det in merged_dets:
+            det["action_mode"] = mode
             src = det.get("source", "unknown")
-            print(f"    [{src}] {det['type']} | '{det['text'][:30]}' | {det['confidence']} | {det['status']}")
+            print(f"    [{src}] {det['type']} | '{det['text'][:30]}' | {det['confidence']} | {det['status']} | {mode}")
 
         doc_record = {
             "doc_id": doc_id,
@@ -154,6 +156,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
             "status": "ready",
             "char_count": len(text),
             "content": text,
+            "default_action_mode": mode,
         }
 
         state.documents[doc_id] = doc_record

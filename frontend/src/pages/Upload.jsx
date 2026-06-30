@@ -15,6 +15,7 @@ const STAGES = [
 const Upload = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState([]);
+  const [fileModes, setFileModes] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStage, setUploadStage] = useState(0);
   const [error, setError] = useState(null);
@@ -92,6 +93,7 @@ const Upload = () => {
     files.forEach((file) => {
       formData.append('files', file);
     });
+    formData.append('file_modes', JSON.stringify(fileModes));
 
     try {
       const response = await axios.post('http://localhost:8000/api/upload', formData, {
@@ -253,27 +255,46 @@ const Upload = () => {
             <ul className="space-y-3 mb-8 max-h-60 overflow-y-auto pr-2">
               {files.map((file, idx) => {
                 const badge = getFileTypeBadge(file.name);
+                const currentMode = fileModes[idx] || 'redact';
                 return (
                   <li 
                     key={idx} 
-                    className="flex items-center gap-4 p-4 bg-aura-cream dark:bg-background-dark rounded-2xl border-2 border-black shadow-retro-white group"
+                    className="flex flex-wrap items-center gap-3 p-4 bg-aura-cream dark:bg-background-dark rounded-2xl border-2 border-black shadow-retro-white group"
                   >
                     <div className="w-10 h-10 bg-white rounded-xl border border-black flex items-center justify-center shrink-0">
                       <span className="material-symbols-outlined text-black text-[22px]">{getFileIcon(file.name)}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-[140px]">
                       <span className="font-bold text-base text-black dark:text-white truncate block">{file.name}</span>
                       <span className="text-xs font-medium text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
                     </div>
-                    <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full border-2 ${badge.color}`}>
-                      {badge.label}
-                    </span>
-                    <button 
-                      onClick={() => removeFile(idx)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex bg-white rounded-xl border-2 border-black p-0.5 shadow-brutalist-xs">
+                        <button
+                          type="button"
+                          onClick={() => setFileModes(prev => ({ ...prev, [idx]: 'redact' }))}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${currentMode === 'redact' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-black'}`}
+                        >
+                          <span className="material-symbols-outlined text-[13px]">ink_eraser</span> Redact
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFileModes(prev => ({ ...prev, [idx]: 'anonymize' }))}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${currentMode === 'anonymize' ? 'bg-secondary text-black shadow-sm' : 'text-gray-600 hover:text-black'}`}
+                        >
+                          <span className="material-symbols-outlined text-[13px]">masks</span> Anonymize
+                        </button>
+                      </div>
+                      <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full border-2 ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                      <button 
+                        onClick={() => removeFile(idx)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
                   </li>
                 );
               })}
