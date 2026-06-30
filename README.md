@@ -6,12 +6,12 @@
 
 > **⚡ Recommended:** Watch the video at **2× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
 
-## ▶️ How to Watch at 2× Speed (Google Drive)
+## ▶️ How to Watch at 1.75× Speed (Google Drive)
 
 1. Open the video using the link above.
 2. Click **View** in the top menu.
 3. Select **Playback speed**.
-4. Choose **2×**.
+4. Choose **1.75×**.
 
 ---
 
