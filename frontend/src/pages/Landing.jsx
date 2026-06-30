@@ -1,78 +1,114 @@
 import { Link } from 'react-router-dom';
-import { ShieldAlert, ArrowRight } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Shield, FileText, Eye, Download } from 'lucide-react';
 
 const Landing = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center antialiased bg-white text-brand-black selection:bg-redaction-primary selection:text-white">
-      {/* Navigation Bar */}
-      <header className="w-full max-w-[800px] mt-8 px-4 animate-fade-in-up z-50">
-        <div className="bg-white/80 backdrop-blur-md rounded-full flex items-center justify-between px-6 py-4 shadow-sm border border-brand-border/50">
-          <Link to="/" aria-label="Conseal Home" className="flex items-center gap-2 font-bold text-xl tracking-tight transition-transform hover:scale-105 duration-300">
-            <ShieldAlert className="w-6 h-6 text-brand-black fill-brand-black/10" />
+    <div className="min-h-screen flex flex-col items-center antialiased bg-white text-[#1a1a1a]">
+      {/* Navigation */}
+      <header className="w-full max-w-[800px] mt-6 px-4 animate-fade-in-up z-50">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl flex items-center justify-between px-5 py-3.5 shadow-sm border border-gray-100">
+          <Link to="/" className="flex items-center gap-2 font-bold text-lg tracking-tight transition-transform hover:scale-105 duration-200">
+            <Shield className="w-5 h-5 text-[#121212]" />
             Conseal
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link to="/upload" className="relative text-brand-black hover:text-black transition-colors after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-black after:transition-all hover:after:w-full duration-300">Workspace</Link>
-            <a href="#how-it-works" className="relative text-brand-black hover:text-black transition-colors after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-black after:transition-all hover:after:w-full duration-300">How it works</a>
-            <a href="#github" className="relative text-brand-black hover:text-black transition-colors after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-black after:transition-all hover:after:w-full duration-300">GitHub</a>
+          <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
+            <Link to="/upload" className="text-gray-600 hover:text-black transition-colors duration-200">Workspace</Link>
+            <a href="#how-it-works" className="text-gray-600 hover:text-black transition-colors duration-200">How it works</a>
           </nav>
+          <Link 
+            to="/upload" 
+            className="px-5 py-2 bg-[#121212] text-white rounded-xl font-semibold text-xs hover:bg-gray-800 transition-all duration-200"
+          >
+            Get Started
+          </Link>
         </div>
       </header>
 
-      {/* Main Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 w-full max-w-4xl mt-20 mb-24">
-        {/* Hero Icon/Logo Graphic */}
-        <div className="relative w-24 h-24 mb-10 flex items-center justify-center animate-float">
-          {/* Shadow/Background Layers for 3D effect */}
-          <div className="absolute inset-0 bg-[#f1f5f9] rounded-2xl transform translate-y-[-10px] scale-90 opacity-60"></div>
-          <div className="absolute inset-0 bg-[#e2e8f0] rounded-2xl transform translate-y-[-5px] scale-95 opacity-80"></div>
-          {/* Main Green Icon */}
-          <div className="relative w-20 h-20 bg-[#63e65c] rounded-2xl flex items-center justify-center shadow-sm">
-            <svg fill="none" height="40" viewBox="0 0 40 40" width="40" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 10H30V15H17.5L15 22.5H22.5L20 30H12.5L15 22.5L12.5 30H5L10 15H10Z" fill="#121212"></path>
-              <path d="M12.5 15H27.5L25 22.5H15L12.5 15Z" fill="#121212"></path>
-            </svg>
+      {/* Hero */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 w-full max-w-4xl mt-16 mb-20">
+        {/* Icon */}
+        <div className="relative w-20 h-20 mb-8 flex items-center justify-center animate-float">
+          <div className="absolute inset-0 bg-gray-100 rounded-2xl transform -translate-y-2 scale-90 opacity-60"></div>
+          <div className="absolute inset-0 bg-gray-200/60 rounded-2xl transform -translate-y-1 scale-95 opacity-80"></div>
+          <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <Shield className="w-8 h-8 text-white" />
           </div>
         </div>
         
         {/* Headline */}
-        <h1 className="text-[3.5rem] md:text-[5rem] font-bold leading-[1.05] tracking-tighter mb-6 text-[#1a1a1a] animate-fade-in-up">
+        <h1 className="text-[3rem] md:text-[4.5rem] font-bold leading-[1.05] tracking-tighter mb-5 text-[#1a1a1a] animate-fade-in-up">
           Anonymize documents<br />
           safely and securely.
         </h1>
         
-        {/* Subheadline */}
-        <p className="text-lg md:text-xl text-brand-gray mb-10 max-w-2xl font-normal leading-relaxed animate-fade-in-up delay-100">
-          Redact or label personally identifying information (PII) automatically.<br className="hidden sm:block" />
-          Ensure zero leaks before sharing with AI tools.
+        {/* Sub */}
+        <p className="text-base md:text-lg text-gray-500 mb-8 max-w-xl font-normal leading-relaxed animate-fade-in-up delay-100" style={{opacity: 1}}>
+          Automatically detect and redact PII before sharing with AI tools.
+          <br className="hidden sm:block" />
+          Understand every decision. Fix every mistake.
         </p>
         
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto animate-fade-in-up delay-200">
-          <Link to="/upload" className="w-full sm:w-auto px-8 py-3.5 bg-[#121212] text-white rounded-full font-semibold text-sm hover:bg-gray-800 transition-all duration-300 hover:scale-105 flex items-center justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto animate-fade-in-up delay-200" style={{opacity: 1}}>
+          <Link 
+            to="/upload" 
+            className="w-full sm:w-auto px-8 py-3.5 bg-[#121212] text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2"
+          >
             Open Workspace
-          </Link>
-          <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3.5 bg-white text-[#121212] border border-[#e5e7eb] rounded-full font-semibold text-sm hover:bg-gray-50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2">
-            See how it works
             <ArrowRight className="w-4 h-4" />
+          </Link>
+          <a 
+            href="#how-it-works" 
+            className="w-full sm:w-auto px-8 py-3.5 bg-white text-[#1a1a1a] border border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            See how it works
           </a>
         </div>
       </main>
 
-      {/* Trusted By Logos */}
-      <section className="w-full max-w-[1000px] px-4 pb-16 mt-auto animate-fade-in-up delay-300">
-        <p className="text-center text-sm text-gray-400 font-medium mb-8 uppercase tracking-widest">
-          Built for the SprintFour Hackathon
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-          {/* We keep the logos as requested or use placeholders, let's keep the user's provided ones as design elements */}
-          <img alt="Metalab Logo" className="h-6 object-contain transition-transform duration-300 hover:-translate-y-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8vRpPs6Wvf0XWPAO-1CNyVK401oDAIwbIwn9rvlWLy_fHiibU4Sa13J991Y2O6a8TeOkZTfavFfOYveS1tzQ0xLKu55Zx8EtYY4Ec0qpzh2NzSr-fIiVnqQbaKslaOin5uvffAQnkhW2x7FLBhI3wBZ1gXdE4x8Opjs_VleHqth4zIu5VNnvSwinaVpKVgoID5GgTOnBHIrgYNeJXOb6nssCm3rE2k9LFPKJvCDgWp9rmd-QXUUtwuBsM4rmTRqtPtqXZ0M8cdF9w" />
-          <img alt="Figma Logo" className="h-7 object-contain transition-transform duration-300 hover:-translate-y-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcMo2jrvmjiZM9ElbTHeFAQ4pmCEh4HBkFaBheKqrdrpsqE6uk_gHH9Clbn_3OVMJL_HyUxC02XC-2SbwvR-lxjjCt155OdxWKijLiPGkxIUJvmrDD7ydpQVg9csBk9C61PlKs0GWAYwb_b_3WZUqMQT5IaAiDxSNBcA3D-Vd9EmUcr4bPLUHGxE349WsH2qu7q-WgyPRgum0YOad9pN2T_OIJ7qLBCGs42QoQp8NVQZrMtfU_GO5PYjlCNkyRAqmtCl_59O4tg73k" />
-          <img alt="Pentagram Logo" className="h-6 object-contain transition-transform duration-300 hover:-translate-y-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiwPQXTl4uuAhKHZrUccHA3XzVdcBAN-VurSjpy8qHFGfXtjhvRYsyOphXVvB8XhGWivCRMNmw-lmHtsSjNQFxEsBjpMhToTAesKFLwn2RlYKmaaoKFtIStR-z4cMBKcktBuYW1L4DXvGZ69Ul9WRrPr6O5HcCsfAA28Bv2NUUrXtahLgxLfW9wnw68icMuuGXSJpInqswk6TbANRXcKkzdW5D0Oo21zyykOiT1ak2Ie2NOQRfZs-Npy6V0afVytv8OgRxhHs0l0Vu" />
-          <img alt="Google Logo" className="h-7 object-contain transition-transform duration-300 hover:-translate-y-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAohH9pgfYVZnyHn7XomBbjD7BYat8tTmi75OQRoRBbHPyqnLT6E7mDX6xFBrL342mL34lm7QdFtYqDntQmW9rU11K4jKtyuzUKvPvVcctqvYTcjyBXhW-mzT6j0WPfDzb10qBed5cE_7qvg6NTl7L1svR02H21Xw9f2oDsVAVWVw2ygrKs66IiAmYQGRJlGXxc1h1cQrwJBThrrAWikPGhAe1xM8rc8y_ut_8WeNjD2oFDW61Fneq7pOfDJHdak8EdyiqMOWQkZlZA" />
-          <img alt="Spotify Logo" className="h-7 object-contain transition-transform duration-300 hover:-translate-y-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCypUhF2noWVr8-ujeu5sE8aPqX5lzIewPfAzEikoGDL9hJKnsyZCwPCjhecGh_ln0YD0NeEtK7t31QWRohSI8hQNOAqpBGjBHHuYUbd1hzJ3anL16iNcCKm-nbM1BUz5_4n9FwcwUdzzmkQh0owtjeHlF_9xizrLPoF1-G5-ASZF2Gz3BkxIQlPUNtKwIW7f_xprFU46Tld5mgwhvGpx2nABDGBQxaDz21SEESdKMN5BsyyUPht5IVl_ucg-WoVOkWnzcc-vB5Q0Wl" />
+      {/* How It Works */}
+      <section id="how-it-works" className="w-full max-w-4xl px-4 pb-20 animate-fade-in-up delay-300" style={{opacity: 1}}>
+        <h2 className="text-center text-xs text-gray-400 font-bold mb-10 uppercase tracking-[0.2em]">
+          How It Works
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { 
+              icon: <FileText className="w-5 h-5" />, 
+              title: 'Upload', 
+              desc: 'Drop your PDF, DOCX, or TXT files. Our engine extracts and analyzes the text.' 
+            },
+            { 
+              icon: <Eye className="w-5 h-5" />, 
+              title: 'Review & Correct', 
+              desc: 'Inspect every detection. Accept, reject, or flag. Add missed PII manually.' 
+            },
+            { 
+              icon: <Download className="w-5 h-5" />, 
+              title: 'Export Clean', 
+              desc: 'Download a safely redacted document with PII permanently removed.' 
+            },
+          ].map((step, i) => (
+            <div 
+              key={i} 
+              className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+            >
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 border border-gray-200 text-gray-500">
+                {step.icon}
+              </div>
+              <h3 className="font-bold text-base mb-2">{step.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-gray-100 py-6 text-center">
+        <p className="text-xs text-gray-400">
+          Built for the SprintFour Hackathon 2026 · Problems 1 + 3
+        </p>
+      </footer>
     </div>
   );
 };

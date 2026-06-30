@@ -7,6 +7,8 @@
 !/.gitignore
 !/README.md
 !/TECHNICAL_BLUEPRINT.md
+!/Resume.pdf
+!/participant.md
 
 # Ignore standard backend/frontend stuff inside those directories
 backend/venv/
@@ -20,3 +22,4 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 frontend/.DS_Store
+backend/data/
