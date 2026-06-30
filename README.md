@@ -1,4 +1,5 @@
 # Conseal Hackathon Project (SprintFour 2026)
+# Sorry Slow network my video is being uploaded 
 
 Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
