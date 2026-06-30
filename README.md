@@ -4,7 +4,7 @@
 > **📺 Watch the demo here:**  
 > https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing
 
-> **⚡ Recommended:** Watch the video at **2× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
+> **⚡ Recommended:** Watch the video at **2× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<, I missed a feature in the video so non redacted or anonymised words when clicked you will get a reasoning from local llm of why they were not redacted 
 
 ## ▶️ How to Watch at 1.75× Speed (Google Drive)
 
