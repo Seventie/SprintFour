@@ -17,7 +17,7 @@ def health_check():
     return {"status": "ok", "version": "1.0.0"}
 
 # We will include routers here later
-from .routers import upload, documents, detections, export
+from routers import upload, documents, detections, export
 
 app.include_router(upload.router)
 app.include_router(documents.router)
