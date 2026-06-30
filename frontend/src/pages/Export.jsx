@@ -252,40 +252,50 @@ const Export = () => {
                   <span>🛡️ Security Audit Checklist</span>
                   <span className="text-[9px] bg-secondary px-2 py-0.5 rounded border border-black font-bold shadow-[1px_1px_0px_0px_#000]">WIPED CLEAN</span>
                 </span>
-                <div className="space-y-2.5 text-xs font-bold text-gray-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000]">
+                <div className="space-y-3 text-xs font-bold text-gray-800">
+                  <div className="flex items-start gap-2.5 bg-gray-50 p-2.5 rounded-xl border border-black">
+                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000] mt-0.5">
                       <CheckCircle className="w-3.5 h-3.5 text-black" />
                     </div>
                     <div>
-                      <span className="block">Metadata & Author History Sanitized</span>
-                      <span className="text-[10px] text-gray-500 font-normal">Removed: {strippedMeta && strippedMeta.length > 0 ? strippedMeta.join(', ') : 'Author, Creator, Title, ModDate'}</span>
+                      <span className="block text-black">Metadata & Author History Sanitized</span>
+                      <span className="text-[10px] text-gray-600 font-normal block mt-0.5 leading-tight">
+                        {(() => {
+                          const metaCount = (strippedMeta || []).filter(m => !m.includes('Hyperlink') && !m.includes('Interactive Link')).length;
+                          return `${metaCount > 0 ? metaCount : 4} document attributes purged (Creator, Author, Dates)`;
+                        })()}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000]">
+                  <div className="flex items-start gap-2.5 bg-gray-50 p-2.5 rounded-xl border border-black">
+                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000] mt-0.5">
                       <Shield className="w-3.5 h-3.5 text-black" />
                     </div>
                     <div>
-                      <span className="block">Hidden Clickable Links & URIs Neutralized</span>
-                      <span className="text-[10px] text-gray-500 font-normal">Embedded hyperlinks & tracking URLs deleted</span>
+                      <span className="block text-black">Hidden Clickable Links Neutralized</span>
+                      <span className="text-[10px] text-gray-600 font-normal block mt-0.5 leading-tight">
+                        {(() => {
+                          const linkCount = (strippedMeta || []).filter(m => m.includes('Hyperlink') || m.includes('Interactive Link')).length;
+                          return linkCount > 0 ? `${linkCount} interactive URIs & hyperlinks detached` : 'Embedded hyperlinks & tracking URLs deleted';
+                        })()}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000]">
+                  <div className="flex items-start gap-2.5 bg-gray-50 p-2.5 rounded-xl border border-black">
+                    <div className="w-5 h-5 rounded-full bg-secondary border border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_#000] mt-0.5">
                       <FileText className="w-3.5 h-3.5 text-black" />
                     </div>
                     <div>
-                      <span className="block">spaCy Word-Boundary Protection</span>
-                      <span className="text-[10px] text-gray-500 font-normal">{redactedCount} entities secured in native {activeDoc.file_type.toUpperCase()} layout</span>
+                      <span className="block text-black">spaCy Word-Boundary Protection</span>
+                      <span className="text-[10px] text-gray-600 font-normal block mt-0.5 leading-tight">{redactedCount} entities secured in native {activeDoc.file_type.toUpperCase()} layout</span>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowAuditModal(true)}
-                  className="w-full mt-3 py-2.5 bg-card-yellow hover:bg-yellow-300 text-black font-bold text-xs rounded-2xl border-2 border-black shadow-brutalist-xs transition-all flex items-center justify-center gap-2"
+                  className="w-full mt-3 py-3 bg-card-yellow hover:bg-yellow-300 text-black font-bold text-xs rounded-2xl border-2 border-black shadow-brutalist-xs transition-all flex items-center justify-center gap-2"
                 >
-                  <span>🔍 View Exact Wiped Metadata & Link Report</span>
+                  <span>🔍 View Itemized Audit Report</span>
                 </button>
               </div>
             </>
