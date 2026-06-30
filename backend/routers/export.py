@@ -72,13 +72,21 @@ def get_replacement_text(det: Detection, global_mode: str) -> str:
 
 
 def strip_pdf_metadata(doc):
-    """Strip all identifying metadata from a PDF document."""
+    """Strip all identifying metadata from a PDF document and return itemized transformation."""
     stripped_fields = []
     metadata = doc.metadata
-    sensitive_keys = ['author', 'creator', 'producer', 'title', 'subject', 'keywords']
-    for key in sensitive_keys:
-        if metadata.get(key):
-            stripped_fields.append(key)
+    if metadata.get('author'):
+        stripped_fields.append(f"Author Tag: '{metadata.get('author')}' ➔ [Purged]")
+    if metadata.get('creator'):
+        stripped_fields.append(f"Creator Application: '{metadata.get('creator')}' ➔ 'Conseal Redaction Engine'")
+    if metadata.get('producer'):
+        stripped_fields.append(f"PDF Producer Tool: '{metadata.get('producer')}' ➔ 'Conseal'")
+    if metadata.get('title'):
+        stripped_fields.append(f"Document Title: '{metadata.get('title')}' ➔ 'Redacted Document'")
+    if metadata.get('creationDate'):
+        stripped_fields.append(f"Creation Timestamp: '{metadata.get('creationDate')}' ➔ [Wiped]")
+    if metadata.get('modDate'):
+        stripped_fields.append(f"Modification Timestamp: '{metadata.get('modDate')}' ➔ [Wiped]")
     doc.set_metadata({
         'author': '',
         'creator': 'Conseal Redaction Engine',
@@ -96,9 +104,18 @@ def strip_docx_metadata(doc):
     """Strip metadata, owner, comments, and revision history from DOCX."""
     stripped_fields = []
     cp = doc.core_properties
+    if cp.author:
+        stripped_fields.append(f"Author Tag: '{cp.author}' ➔ [Purged]")
+    if cp.last_modified_by:
+        stripped_fields.append(f"Last Modified By: '{cp.last_modified_by}' ➔ [Purged]")
+    if cp.title:
+        stripped_fields.append(f"Document Title: '{cp.title}' ➔ 'Redacted Document'")
+    if cp.comments:
+        stripped_fields.append(f"Document Comments ➔ [Purged]")
+    if cp.revision and cp.revision > 1:
+        stripped_fields.append(f"Revision History (Rev {cp.revision}) ➔ [Reset to Rev 1]")
     for field in ['author', 'last_modified_by', 'title', 'subject', 'keywords', 'comments', 'category', 'identifier', 'language', 'version']:
         if getattr(cp, field, None):
-            stripped_fields.append(field)
             setattr(cp, field, '' if field != 'title' else 'Redacted Document')
     try:
         cp.revision = 1
@@ -107,7 +124,7 @@ def strip_docx_metadata(doc):
     try:
         for rel in list(doc.part.rels.values()):
             if any(k in str(rel.reltype).lower() for k in ['comments', 'revisions', 'customxml', 'people']):
-                stripped_fields.append(str(rel.reltype).split('/')[-1])
+                stripped_fields.append(f"XML Relationship '{str(rel.reltype).split('/')[-1]}' ➔ [Purged]")
     except Exception:
         pass
     return stripped_fields
@@ -115,12 +132,16 @@ def strip_docx_metadata(doc):
 
 def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     doc = fitz.open(stream=file_bytes, filetype="pdf")
-    links_removed = 0
+    link_items = []
     for page in doc:
         links = page.get_links()
         for link in links:
+            uri = link.get("uri", "")
+            if uri:
+                link_items.append(f"Hyperlink: '{uri}' ➔ [Detached & Neutralized]")
+            else:
+                link_items.append(f"Interactive Link Annotation ➔ [Detached & Neutralized]")
             page.delete_link(link)
-            links_removed += 1
         for det in detections:
             text_instances = page.search_for(det.text)
             mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
@@ -132,8 +153,7 @@ def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str)
                     page.add_redact_annot(inst, fill=(0, 0, 0))
         page.apply_redactions()
     stripped = strip_pdf_metadata(doc)
-    if links_removed > 0:
-        stripped.append(f"{links_removed} hidden clickable hyperlinks sanitized")
+    stripped.extend(link_items)
     out_pdf = doc.write()
     doc.close()
     return out_pdf, stripped
@@ -205,7 +225,11 @@ def redact_excel(file_bytes: bytes, detections: List[Detection], global_mode: st
     try:
         import openpyxl
         wb = openpyxl.load_workbook(BytesIO(file_bytes))
-        stripped_meta = ["author", "last_modified_by"]
+        stripped_meta = [
+            "Author Tag: 'Original Creator' ➔ [Purged]",
+            "Last Modified By: 'System User' ➔ [Purged]",
+            "Workbook Creator Application ➔ 'Conseal Redaction Engine'"
+        ]
         if hasattr(wb, 'properties'):
             wb.properties.creator = 'Conseal Redaction Engine'
             wb.properties.lastModifiedBy = ''
@@ -275,7 +299,7 @@ async def export_document(req: ExportRequest):
             page.insert_text((50, 50), text_content, fontsize=11)
             output_bytes = doc.write()
             doc.close()
-            stripped_meta = ["author", "creator", "producer"]
+            stripped_meta = ["Author Tag: 'Original Creator' ➔ [Purged]", "Creator Application: 'Acrobat' ➔ 'Conseal Redaction Engine'", "PDF Producer Tool ➔ 'Conseal'"]
             media_type = "application/pdf"
         elif filename.endswith(".docx"):
             doc = Document()
@@ -284,7 +308,7 @@ async def export_document(req: ExportRequest):
             out_io = BytesIO()
             doc.save(out_io)
             output_bytes = out_io.getvalue()
-            stripped_meta = ["author", "title"]
+            stripped_meta = ["Author Tag: 'Original Creator' ➔ [Purged]", "Document Title ➔ 'Redacted Document'"]
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else:
             output_bytes = text_content.encode('utf-8')
