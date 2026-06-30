@@ -2,7 +2,7 @@
 
 # 🎥 Submission Video
 > **📺 Watch the demo here:**  
-> [[https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
+> [(https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
 
 
 
