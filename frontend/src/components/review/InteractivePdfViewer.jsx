@@ -5,28 +5,50 @@ import 'react-pdf/dist/Page/TextLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-const InteractivePdfViewer = ({ fileUrl, searchQuery }) => {
+const InteractivePdfViewer = ({ fileUrl, searchQuery, detections = [] }) => {
   const [numPages, setNumPages] = useState(null);
   const [useNative, setUseNative] = useState(false);
   const [pageWidth, setPageWidth] = useState(520);
 
-  function highlightPattern(text, pattern) {
-    if (!pattern || !text) return text;
-    try {
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const splitText = text.split(new RegExp(`(${escapedPattern})`, 'gi'));
-      return splitText.map((part, index) =>
-        part.toLowerCase() === pattern.toLowerCase() ? (
-          <mark key={index} className="bg-yellow-300 text-black font-extrabold px-1 rounded shadow-[1px_1px_0px_0px_#000] border border-black animate-pulse">
-            {part}
+  function renderLiveText(text) {
+    if (!text) return text;
+    const activeDets = detections.filter(d => d.status === 'redacted' || d.status === 'added' || d.text === searchQuery);
+    const matchedDet = activeDets.find(d => text.toLowerCase().includes(d.text.toLowerCase()));
+    
+    if (matchedDet && (matchedDet.status === 'redacted' || matchedDet.status === 'added')) {
+      const mode = matchedDet.action_mode || 'redact';
+      const rep = matchedDet.custom_replacement || (mode === 'anonymize' ? `[${matchedDet.type}]` : '████████');
+      if (mode === 'anonymize') {
+        return (
+          <mark className="bg-gray-200 text-black font-mono font-bold px-1.5 py-0.5 border border-black rounded shadow-[1px_1px_0px_0px_#000] text-[11px]">
+            {rep}
           </mark>
-        ) : (
-          part
-        )
-      );
-    } catch (e) {
-      return text;
+        );
+      } else {
+        return (
+          <mark className="bg-black text-black select-none font-mono px-1 rounded tracking-tighter">
+            ████████
+          </mark>
+        );
+      }
     }
+
+    if (searchQuery && text.toLowerCase().includes(searchQuery.toLowerCase())) {
+      try {
+        const escapedPattern = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const splitText = text.split(new RegExp(`(${escapedPattern})`, 'gi'));
+        return splitText.map((part, index) =>
+          part.toLowerCase() === searchQuery.toLowerCase() ? (
+            <mark key={index} className="bg-yellow-300 text-black font-extrabold px-1 rounded shadow-[1px_1px_0px_0px_#000] border border-black animate-pulse">
+              {part}
+            </mark>
+          ) : part
+        );
+      } catch (e) {
+        return text;
+      }
+    }
+    return text;
   }
 
   if (useNative) {
@@ -92,7 +114,7 @@ const InteractivePdfViewer = ({ fileUrl, searchQuery }) => {
               <Page
                 pageNumber={index + 1}
                 width={pageWidth}
-                customTextRenderer={({ str }) => highlightPattern(str, searchQuery)}
+                customTextRenderer={({ str }) => renderLiveText(str)}
               />
             </div>
           ))}

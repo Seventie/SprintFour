@@ -459,6 +459,7 @@ const Review = () => {
               <InteractivePdfViewer
                 fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
                 searchQuery={pdfSearchQuery}
+                detections={activeDetections}
               />
             </div>
           ) : viewMode === 'split' && activeDoc?.file_type === 'pdf' ? (
@@ -473,6 +474,7 @@ const Review = () => {
                 <InteractivePdfViewer
                   fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
                   searchQuery={pdfSearchQuery}
+                  detections={activeDetections}
                 />
               </div>
             </div>
