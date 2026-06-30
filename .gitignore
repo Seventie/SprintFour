@@ -1,0 +1,22 @@
+# Ignore everything in root by default to avoid tracking unrelated files
+/*
+
+# Except the following directories and files
+!/frontend/
+!/backend/
+!/.gitignore
+!/README.md
+!/TECHNICAL_BLUEPRINT.md
+
+# Ignore standard backend/frontend stuff inside those directories
+backend/venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.env
+*.pyc
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.DS_Store

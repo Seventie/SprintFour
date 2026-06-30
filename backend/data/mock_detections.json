@@ -1,0 +1,74 @@
+[
+  {
+    "text": "Arjun Sharma",
+    "char_start": 0,
+    "char_end": 12,
+    "type": "NAME",
+    "confidence": 0.95,
+    "status": "redacted",
+    "reason": "Matches high-confidence NAME pattern"
+  },
+  {
+    "text": "arjun.sharma@lawfirm.in",
+    "char_start": 21,
+    "char_end": 44,
+    "type": "EMAIL",
+    "confidence": 0.97,
+    "status": "redacted",
+    "reason": "Matches EMAIL address format"
+  },
+  {
+    "text": "9876543210",
+    "char_start": 70,
+    "char_end": 80,
+    "type": "PHONE",
+    "confidence": 0.38,
+    "status": "missed",
+    "reason": "Low confidence match for PHONE (missing country code)"
+  },
+  {
+    "text": "Monday",
+    "char_start": 105,
+    "char_end": 111,
+    "type": "DATE",
+    "confidence": 0.28,
+    "status": "false_positive",
+    "reason": "Potential date mention, but low confidence"
+  },
+  {
+    "text": "12/03/1990",
+    "char_start": 130,
+    "char_end": 140,
+    "type": "DATE",
+    "confidence": 0.91,
+    "status": "redacted",
+    "reason": "Matches standard DATE format (DD/MM/YYYY)"
+  },
+  {
+    "text": "ABCDE1234F",
+    "char_start": 160,
+    "char_end": 170,
+    "type": "PAN",
+    "confidence": 0.99,
+    "status": "redacted",
+    "reason": "Matches exact Indian PAN card format"
+  },
+  {
+    "text": "123 MG Road, Bangalore",
+    "char_start": 190,
+    "char_end": 212,
+    "type": "ADDRESS",
+    "confidence": 0.52,
+    "status": "false_positive",
+    "reason": "Possible address detected"
+  },
+  {
+    "text": "192.168.1.1",
+    "char_start": 230,
+    "char_end": 241,
+    "type": "IP",
+    "confidence": 0.85,
+    "status": "redacted",
+    "reason": "Matches IPv4 address pattern"
+  }
+]
