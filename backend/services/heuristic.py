@@ -12,9 +12,12 @@ from typing import List, Dict, Tuple
 import spacy
 
 try:
-    _nlp = spacy.load("en_core_web_lg")
+    _nlp = spacy.load("en_core_web_trf")
 except Exception:
-    _nlp = spacy.blank("en")
+    try:
+        _nlp = spacy.load("en_core_web_lg")
+    except Exception:
+        _nlp = spacy.blank("en")
 
 # --- Pattern definitions ---
 # Each pattern: (compiled_regex, pii_type, base_confidence, reason_template)
