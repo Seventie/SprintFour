@@ -1,103 +1,109 @@
 import { Link } from 'react-router-dom';
-import { ShieldAlert, ArrowRight, Shield, FileText, Eye, Download } from 'lucide-react';
+import { ArrowRight, Shield, FileText, Eye, Download, CheckCircle2, Sparkles, Zap } from 'lucide-react';
+import Navbar from '../components/layout/Navbar';
 
 const Landing = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center antialiased bg-white text-[#1a1a1a]">
-      {/* Navigation */}
-      <header className="w-full max-w-[800px] mt-6 px-4 animate-fade-in-up z-50">
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl flex items-center justify-between px-5 py-3.5 shadow-sm border border-gray-100">
-          <Link to="/" className="flex items-center gap-2 font-bold text-lg tracking-tight transition-transform hover:scale-105 duration-200">
-            <Shield className="w-5 h-5 text-[#121212]" />
-            Conseal
-          </Link>
-          <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
-            <Link to="/upload" className="text-gray-600 hover:text-black transition-colors duration-200">Workspace</Link>
-            <a href="#how-it-works" className="text-gray-600 hover:text-black transition-colors duration-200">How it works</a>
-          </nav>
+    <div className="min-h-screen flex flex-col items-center antialiased bg-aura-cream dark:bg-background-dark text-gray-900 dark:text-gray-100 overflow-x-hidden">
+      <Navbar />
+
+      {/* Hero Header */}
+      <header className="relative pt-16 pb-20 lg:pt-24 lg:pb-32 flex flex-col items-center text-center w-full max-w-6xl px-4">
+        {/* Decorative elements */}
+        <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full border-2 border-black bg-white dark:bg-card-dark mb-8 shadow-brutalist-sm hover:shadow-retro transition-all cursor-default">
+          <Sparkles className="w-4 h-4 text-primary animate-spin-slow" />
+          <span className="text-xs font-bold tracking-widest text-gray-800 dark:text-gray-200 uppercase">Dual-Layer AI + Heuristic Protection</span>
+        </div>
+
+        <h1 className="max-w-4xl mx-auto px-4 mb-6">
+          <div className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-gray-900 dark:text-white leading-[1.1] mb-2 tracking-tight">
+            Anonymize documents <span className="text-primary italic">safely</span>
+          </div>
+          <div className="text-5xl md:text-7xl lg:text-8xl font-hand text-gray-900 dark:text-primary transform -rotate-2 mt-4 block">
+            with total clarity.
+          </div>
+        </h1>
+
+        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed px-4 font-medium">
+          Automatically detect and redact sensitive PII before sharing with AI or third parties. Understand every decision. Fix every mistake at volume.
+        </p>
+
+        {/* Audience pills */}
+        <p className="text-xl md:text-2xl font-hand text-primary mb-4">
+          Built for teams who can't afford a mistake.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3 mb-12 px-4">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-card-blue border-2 border-black rounded-full shadow-brutalist-sm hover:-translate-y-1 transition-all cursor-default">
+            <FileText className="w-4 h-4 text-black" />
+            <span className="text-xs font-bold uppercase tracking-widest text-black">Legal & Contracts</span>
+          </div>
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-card-yellow border-2 border-black rounded-full shadow-brutalist-sm hover:-translate-y-1 transition-all cursor-default">
+            <Shield className="w-4 h-4 text-black" />
+            <span className="text-xs font-bold uppercase tracking-widest text-black">Healthcare Records</span>
+          </div>
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-card-orange border-2 border-black rounded-full shadow-brutalist-sm hover:-translate-y-1 transition-all cursor-default">
+            <Zap className="w-4 h-4 text-black" />
+            <span className="text-xs font-bold uppercase tracking-widest text-black">Enterprise AI Prep</span>
+          </div>
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-card-purple border-2 border-black rounded-full shadow-brutalist-sm hover:-translate-y-1 transition-all cursor-default">
+            <CheckCircle2 className="w-4 h-4 text-black" />
+            <span className="text-xs font-bold uppercase tracking-widest text-black">Zero Data Leakage</span>
+          </div>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center w-full max-w-md px-4">
           <Link 
             to="/upload" 
-            className="px-5 py-2 bg-[#121212] text-white rounded-xl font-semibold text-xs hover:bg-gray-800 transition-all duration-200"
+            className="bg-primary text-white text-lg px-10 py-4 rounded-full border-2 border-black font-bold shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3"
           >
-            Get Started
+            Open Redaction Workspace
+            <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 w-full max-w-4xl mt-16 mb-20">
-        {/* Icon */}
-        <div className="relative w-20 h-20 mb-8 flex items-center justify-center animate-float">
-          <div className="absolute inset-0 bg-gray-100 rounded-2xl transform -translate-y-2 scale-90 opacity-60"></div>
-          <div className="absolute inset-0 bg-gray-200/60 rounded-2xl transform -translate-y-1 scale-95 opacity-80"></div>
-          <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
+      {/* How It Works Section */}
+      <section id="how-it-works" className="w-full max-w-6xl px-6 pb-28">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-gray-900 dark:text-white">
+            How Conseal Works
+          </h2>
+          <p className="font-hand text-xl text-primary">Simple, fast, and completely transparent.</p>
         </div>
-        
-        {/* Headline */}
-        <h1 className="text-[3rem] md:text-[4.5rem] font-bold leading-[1.05] tracking-tighter mb-5 text-[#1a1a1a] animate-fade-in-up">
-          Anonymize documents<br />
-          safely and securely.
-        </h1>
-        
-        {/* Sub */}
-        <p className="text-base md:text-lg text-gray-500 mb-8 max-w-xl font-normal leading-relaxed animate-fade-in-up delay-100" style={{opacity: 1}}>
-          Automatically detect and redact PII before sharing with AI tools.
-          <br className="hidden sm:block" />
-          Understand every decision. Fix every mistake.
-        </p>
-        
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto animate-fade-in-up delay-200" style={{opacity: 1}}>
-          <Link 
-            to="/upload" 
-            className="w-full sm:w-auto px-8 py-3.5 bg-[#121212] text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2"
-          >
-            Open Workspace
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <a 
-            href="#how-it-works" 
-            className="w-full sm:w-auto px-8 py-3.5 bg-white text-[#1a1a1a] border border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2"
-          >
-            See how it works
-          </a>
-        </div>
-      </main>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="w-full max-w-4xl px-4 pb-20 animate-fade-in-up delay-300" style={{opacity: 1}}>
-        <h2 className="text-center text-xs text-gray-400 font-bold mb-10 uppercase tracking-[0.2em]">
-          How It Works
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { 
-              icon: <FileText className="w-5 h-5" />, 
-              title: 'Upload', 
-              desc: 'Drop your PDF, DOCX, or TXT files. Our engine extracts and analyzes the text.' 
+              color: "bg-card-purple", 
+              icon: <FileText className="w-7 h-7 text-black" />, 
+              title: '1. Instant Analysis', 
+              desc: 'Upload PDF, DOCX, or TXT documents. Our dual-layer engine combines spaCy NLP models with heuristic safety nets to find every trace of PII.' 
             },
             { 
-              icon: <Eye className="w-5 h-5" />, 
-              title: 'Review & Correct', 
-              desc: 'Inspect every detection. Accept, reject, or flag. Add missed PII manually.' 
+              color: "bg-card-yellow", 
+              icon: <Eye className="w-7 h-7 text-black" />, 
+              title: '2. Explain & Triage', 
+              desc: 'Click any word to ask "Why this? Why not that?". Review detections at lightning speed with keyboard shortcuts and built-in fatigue guards.' 
             },
             { 
-              icon: <Download className="w-5 h-5" />, 
-              title: 'Export Clean', 
-              desc: 'Download a safely redacted document with PII permanently removed.' 
+              color: "bg-card-orange", 
+              icon: <Download className="w-7 h-7 text-black" />, 
+              title: '3. Export Sanitized', 
+              desc: 'Download a clean, permanently redacted file. All author and creator metadata is automatically stripped for total privacy.' 
             },
           ].map((step, i) => (
             <div 
               key={i} 
-              className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+              className={`${step.color} rounded-3xl p-8 border-2 border-black shadow-brutalist hover:shadow-brutalist-hover hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between`}
             >
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 border border-gray-200 text-gray-500">
-                {step.icon}
+              <div>
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-6 border-2 border-black shadow-retro">
+                  {step.icon}
+                </div>
+                <h3 className="font-display font-bold text-2xl text-black mb-3">{step.title}</h3>
+                <p className="text-sm font-medium text-gray-800 leading-relaxed">{step.desc}</p>
               </div>
-              <h3 className="font-bold text-base mb-2">{step.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
             </div>
           ))}
         </div>

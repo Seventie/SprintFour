@@ -4,11 +4,13 @@ import Upload from './pages/Upload';
 import Review from './pages/Review';
 import Export from './pages/Export';
 import { ReviewProvider } from './context/ReviewContext';
+import BackgroundAtmosphere from './components/layout/BackgroundAtmosphere';
 
 function App() {
   return (
     <ReviewProvider>
       <Router>
+        <BackgroundAtmosphere />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/upload" element={<Upload />} />

@@ -9,6 +9,12 @@ Merges with model detections without duplicating overlapping ranges.
 import re
 import uuid
 from typing import List, Dict, Tuple
+import spacy
+
+try:
+    _nlp = spacy.load("en_core_web_lg")
+except Exception:
+    _nlp = spacy.blank("en")
 
 # --- Pattern definitions ---
 # Each pattern: (compiled_regex, pii_type, base_confidence, reason_template)
@@ -115,6 +121,86 @@ def run_heuristic_detection(text: str) -> List[Dict]:
     return detections
 
 
+def align_detection_boundaries(text: str, detections: List[Dict]) -> List[Dict]:
+    """
+    Ensure detections do not cut words, email IDs, or tokens in half using spaCy tokenization.
+    Expands start and end indexes to exact token boundaries.
+    """
+    if not detections or not text:
+        return detections
+
+    doc = _nlp(text)
+    token_spans = [(t.idx, t.idx + len(t), t.text) for t in doc]
+
+    aligned = []
+    for det in detections:
+        start_key = "char_start" if "char_start" in det else ("start" if "start" in det else None)
+        end_key = "char_end" if "char_end" in det else ("end" if "end" in det else None)
+        if not start_key or not end_key:
+            aligned.append(det)
+            continue
+
+        start = det[start_key]
+        end = det[end_key]
+
+        matching_tokens = [
+            span for span in token_spans
+            if span[0] < end and span[1] > start
+        ]
+
+        if matching_tokens:
+            # Strip trailing punctuation token if it was caught at the end of sentence
+            if len(matching_tokens) > 1 and matching_tokens[-1][2] in ['.', ',', ';', ':', ')', ']', '}']:
+                matching_tokens = matching_tokens[:-1]
+
+            new_start = matching_tokens[0][0]
+            new_end = matching_tokens[-1][1]
+            det[start_key] = new_start
+            det[end_key] = new_end
+            if "text" in det:
+                det["text"] = text[new_start:new_end]
+
+        aligned.append(det)
+
+    # Remove duplicates or overlaps after alignment
+    def get_start(x):
+        return x.get("char_start", x.get("start", 0))
+
+    def get_end(x):
+        return x.get("char_end", x.get("end", 0))
+
+    aligned.sort(key=get_start)
+    deduped = []
+    for det in aligned:
+        if not deduped:
+            deduped.append(det)
+        else:
+            prev = deduped[-1]
+            prev_start = get_start(prev)
+            prev_end = get_end(prev)
+            curr_start = get_start(det)
+            curr_end = get_end(det)
+
+            if curr_start < prev_end:
+                # Overlap: union spans
+                new_end = max(prev_end, curr_end)
+                if "char_end" in prev:
+                    prev["char_end"] = new_end
+                if "end" in prev:
+                    prev["end"] = new_end
+                if "text" in prev:
+                    prev["text"] = text[prev_start:new_end]
+
+                if det.get("confidence", 0) > prev.get("confidence", 0):
+                    prev["confidence"] = det.get("confidence")
+                    if "type" in det:
+                        prev["type"] = det["type"]
+            else:
+                deduped.append(det)
+
+    return deduped
+
+
 def merge_detections(
     model_detections: List[Dict],
     heuristic_detections: List[Dict],
@@ -123,21 +209,18 @@ def merge_detections(
     Merge model (Presidio) and heuristic detections.
     
     Rules:
-    - If a heuristic detection overlaps with a model detection, keep the one
-      with higher confidence and tag it as 'dual' source.
+    - If a heuristic detection overlaps with a model detection, keep the union
+      of their boundaries and take the higher confidence.
     - If a heuristic detection has no overlap, add it as new.
     - All model detections are always kept.
     """
     merged = []
-    used_heuristic_indices = set()
 
-    # Tag model detections with source
     for det in model_detections:
         det.setdefault("source", "model")
         merged.append(det)
 
-    # Check each heuristic detection for overlap
-    for h_idx, h_det in enumerate(heuristic_detections):
+    for h_det in heuristic_detections:
         overlapping = False
         for m_det in merged:
             if _ranges_overlap(
@@ -145,12 +228,12 @@ def merge_detections(
                 m_det["char_start"], m_det["char_end"]
             ):
                 overlapping = True
-                # If heuristic has higher confidence, upgrade the model detection
+                m_det["char_start"] = min(m_det["char_start"], h_det["char_start"])
+                m_det["char_end"] = max(m_det["char_end"], h_det["char_end"])
                 if h_det["confidence"] > m_det["confidence"]:
                     m_det["confidence"] = h_det["confidence"]
                     m_det["reason"] = f"{m_det['reason']} | Also matched by heuristic pattern."
                     m_det["source"] = "dual"
-                    # Upgrade status if heuristic says redact
                     if h_det["status"] == "redacted" and m_det["status"] != "redacted":
                         m_det["status"] = "redacted"
                 else:

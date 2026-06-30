@@ -1,31 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-brand-black: #121212;
+  --color-primary: #FF7D44;
+  --color-secondary: #FFC82E;
+  --color-aura-black: #1A1A1A;
+  --color-aura-cream: #FAF9F6;
+  --color-card-purple: #E8DFF5;
+  --color-card-yellow: #FCEFB4;
+  --color-card-orange: #FF8C5F;
+  --color-card-blue: #AECFFF;
+  --color-deep-grey: #262626;
+  --color-background-light: #FAF9F6;
+  --color-background-dark: #121212;
+  --color-card-dark: #1E1E1E;
+
+  --color-brand-black: #1A1A1A;
   --color-brand-gray: #6b7280;
   --color-brand-lightGray: #f9fafb;
-  --color-brand-border: #e5e7eb;
+  --color-brand-border: #1A1A1A;
   
-  --color-surface: #fbf8fc;
-  --color-surface-dim: #dcd9dd;
-  --color-surface-bright: #fbf8fc;
+  --color-surface: #FAF9F6;
+  --color-surface-dim: #e8e6e1;
+  --color-surface-bright: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f6f2f7;
-  --color-surface-container: #f0edf1;
-  --color-surface-container-high: #eae7eb;
-  --color-surface-container-highest: #e4e1e5;
-  --color-on-surface: #1b1b1e;
-  --color-inverse-surface: #303033;
-  --color-redaction-primary: #f9362c;
-  --color-surface-dark: #1b1b1e;
+  --color-surface-container-low: #f5f4f0;
+  --color-surface-container: #eae9e4;
+  --color-surface-container-high: #dedcd7;
+  --color-surface-container-highest: #d2d0cb;
+  --color-on-surface: #1A1A1A;
+  --color-inverse-surface: #262626;
+  --color-redaction-primary: #FF7D44;
+  --color-surface-dark: #1E1E1E;
   --color-border-dark: #2C2C2E;
-  --color-text-muted: #747878;
-  --color-system-bg: #fbf9fc;
-  --color-system-container: #f5f3f6;
+  --color-text-muted: #525252;
+  --color-system-bg: #FAF9F6;
+  --color-system-container: #f5f4f0;
   
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: 'DM Sans', 'Inter', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-hand: 'Permanent Marker', cursive;
   --font-mono: 'JetBrains Mono', monospace;
+
+  --shadow-retro: 4px 4px 0px 0px #000000;
+  --shadow-retro-hover: 8px 8px 0px 0px #000000;
+  --shadow-retro-white: 4px 4px 0px 0px #ffffff;
+  --shadow-brutalist: 8px 8px 0px 0px #000000;
+  --shadow-brutalist-hover: 12px 12px 0px 0px #000000;
+  --shadow-brutalist-sm: 3px 3px 0px 0px #000000;
 }
 
 @layer utilities {
@@ -69,6 +90,15 @@
   .stagger-3 { animation-delay: 150ms; }
   .stagger-4 { animation-delay: 200ms; }
   .stagger-5 { animation-delay: 250ms; }
+  
+  .font-display { font-family: 'Playfair Display', serif; }
+  .font-hand { font-family: 'Permanent Marker', cursive; }
+  .shadow-retro { box-shadow: 4px 4px 0px 0px #000000; }
+  .shadow-retro-hover { box-shadow: 8px 8px 0px 0px #000000; }
+  .shadow-brutalist { box-shadow: 8px 8px 0px 0px #000000; }
+  .shadow-brutalist-sm { box-shadow: 3px 3px 0px 0px #000000; }
+  .animate-float-slow { animation: float 9s ease-in-out infinite; }
+  .animate-spin-slow { animation: spin 15s linear infinite; }
 }
 
 /* --- Keyframes --- */
@@ -132,7 +162,7 @@
 
 /* --- Global Styles --- */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'DM Sans', 'Inter', sans-serif;
   background-color: var(--color-surface);
   color: var(--color-on-surface);
   cursor: default;

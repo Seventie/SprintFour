@@ -1,15 +1,15 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageWrapper from '../components/layout/PageWrapper';
-import { UploadCloud, File, AlertCircle, FolderPlus, X, FileText, Shield } from 'lucide-react';
+import { UploadCloud, File, AlertCircle, FolderPlus, X, Shield, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useReview } from '../context/ReviewContext';
 
 const STAGES = [
   { label: 'Parsing Documents', icon: 'description' },
-  { label: 'Detecting PII Entities', icon: 'search' },
-  { label: 'Classifying Confidence', icon: 'psychology' },
-  { label: 'Generating Report', icon: 'analytics' },
+  { label: 'Tokenizing with spaCy NLP', icon: 'search' },
+  { label: 'Aligning Word Boundaries', icon: 'psychology' },
+  { label: 'Generating Redaction Workspace', icon: 'analytics' },
 ];
 
 const Upload = () => {
@@ -69,9 +69,9 @@ const Upload = () => {
 
   const getFileTypeBadge = (name) => {
     const lower = name.toLowerCase();
-    if (lower.endsWith('.pdf')) return { label: 'PDF', color: 'bg-red-50 text-red-600 border-red-200' };
-    if (lower.endsWith('.docx')) return { label: 'DOCX', color: 'bg-blue-50 text-blue-600 border-blue-200' };
-    return { label: 'TXT', color: 'bg-gray-50 text-gray-600 border-gray-200' };
+    if (lower.endsWith('.pdf')) return { label: 'PDF', color: 'bg-card-orange text-black border-black' };
+    if (lower.endsWith('.docx')) return { label: 'DOCX', color: 'bg-card-blue text-black border-black' };
+    return { label: 'TXT', color: 'bg-card-purple text-black border-black' };
   };
 
   const handleUpload = async () => {
@@ -81,7 +81,6 @@ const Upload = () => {
     setUploadStage(0);
     setError(null);
 
-    // Simulate progressive stage updates
     const stageInterval = setInterval(() => {
       setUploadStage(prev => {
         if (prev < STAGES.length - 1) return prev + 1;
@@ -102,7 +101,6 @@ const Upload = () => {
       clearInterval(stageInterval);
       setUploadStage(STAGES.length - 1);
       
-      // Brief pause to show final stage
       await new Promise(r => setTimeout(r, 600));
       
       dispatch({ type: 'LOAD_SESSION', payload: response.data });
@@ -117,40 +115,40 @@ const Upload = () => {
 
   return (
     <PageWrapper>
-      <main className="flex-1 flex flex-col items-center justify-center px-4 w-full max-w-3xl mt-16 mb-20">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 w-full max-w-4xl mt-12 mb-20">
         
         {/* Processing Overlay */}
         {isUploading && (
-          <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fade-in" style={{opacity: 1}}>
-            <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center mb-8 shadow-lg">
-              <Shield className="w-8 h-8 text-white" />
+          <div className="fixed inset-0 bg-aura-cream/95 dark:bg-background-dark/95 backdrop-blur-md z-50 flex flex-col items-center justify-center">
+            <div className="w-20 h-20 rounded-3xl bg-primary border-2 border-black flex items-center justify-center mb-8 shadow-brutalist animate-bounce">
+              <Shield className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2 tracking-tight">Analyzing Documents</h2>
-            <p className="text-sm text-gray-500 mb-10">Running PII detection engine...</p>
+            <h2 className="text-4xl font-display font-bold text-black dark:text-white mb-2 tracking-tight">Anonymizing Documents</h2>
+            <p className="text-lg font-hand text-primary mb-10">Splitting tokens & applying spaCy boundary alignment...</p>
             
-            <div className="w-80 space-y-3">
+            <div className="w-96 space-y-4">
               {STAGES.map((stage, i) => (
                 <div 
                   key={i} 
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 ${
-                    i < uploadStage ? 'bg-emerald-50 border border-emerald-200' :
-                    i === uploadStage ? 'bg-gray-50 border border-gray-200 progress-pulse' :
-                    'bg-white border border-gray-100 opacity-40'
+                  className={`flex items-center gap-4 px-6 py-4 rounded-2xl border-2 border-black transition-all duration-500 ${
+                    i < uploadStage ? 'bg-card-yellow shadow-retro' :
+                    i === uploadStage ? 'bg-white dark:bg-card-dark shadow-brutalist scale-105' :
+                    'bg-white/40 dark:bg-card-dark/40 border-gray-400 opacity-50'
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                    i < uploadStage ? 'bg-emerald-500' :
-                    i === uploadStage ? 'bg-black' : 'bg-gray-200'
+                  <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center shrink-0 ${
+                    i < uploadStage ? 'bg-primary text-white' :
+                    i === uploadStage ? 'bg-secondary text-black animate-spin' : 'bg-gray-200 text-gray-500'
                   }`}>
                     {i < uploadStage ? (
-                      <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                      <span className="material-symbols-outlined text-[16px] font-bold">check</span>
                     ) : i === uploadStage ? (
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full" style={{animation: 'spin 0.8s linear infinite'}}></div>
+                      <Sparkles className="w-4 h-4" />
                     ) : (
-                      <span className="material-symbols-outlined text-gray-400 text-[14px]">{stage.icon}</span>
+                      <span className="material-symbols-outlined text-[16px]">{stage.icon}</span>
                     )}
                   </div>
-                  <span className={`text-sm font-medium ${i <= uploadStage ? 'text-[#1a1a1a]' : 'text-gray-400'}`}>
+                  <span className="text-base font-bold text-black dark:text-white">
                     {stage.label}
                   </span>
                 </div>
@@ -160,38 +158,41 @@ const Upload = () => {
         )}
 
         {/* Header */}
-        <div className="text-center mb-10 animate-fade-in-up">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-3 text-[#1a1a1a]">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full border-2 border-black bg-card-purple mb-4 shadow-brutalist-sm">
+            <Sparkles className="w-4 h-4 text-black" />
+            <span className="text-xs font-bold uppercase tracking-widest text-black">Workspace Ingestion</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-display font-bold tracking-tight mb-3 text-black dark:text-white">
             Upload Documents
           </h1>
-          <p className="text-base text-gray-500 max-w-lg mx-auto">
-            Drag and drop files or browse to begin PII detection and redaction analysis.
+          <p className="text-xl font-hand text-primary max-w-lg mx-auto">
+            Drop files to divide tokens with spaCy & detect sensitive data.
           </p>
         </div>
 
         {/* Drop Zone */}
         <div 
-          className={`w-full p-12 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center transition-all duration-300 animate-fade-in-up delay-100 ${
+          className={`w-full p-14 border-2 border-black rounded-[3rem] flex flex-col items-center justify-center transition-all duration-300 ${
             isDragging 
-              ? 'border-black bg-gray-50 scale-[1.01] shadow-lg' 
-              : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+              ? 'bg-card-orange scale-[1.02] shadow-brutalist-hover' 
+              : 'bg-card-yellow hover:shadow-brutalist shadow-retro'
           }`}
-          style={{opacity: 1}}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 ${isDragging ? 'bg-black' : 'bg-gray-100'}`}>
-            <UploadCloud className={`w-7 h-7 transition-colors duration-300 ${isDragging ? 'text-white' : 'text-gray-400'}`} />
+          <div className="w-20 h-20 bg-white rounded-3xl border-2 border-black shadow-retro flex items-center justify-center mb-6">
+            <UploadCloud className="w-10 h-10 text-black" />
           </div>
-          <p className="text-lg font-semibold mb-1 text-[#1a1a1a]">
-            {isDragging ? 'Drop files here' : 'Drag and drop documents'}
+          <p className="text-2xl font-display font-bold mb-2 text-black">
+            {isDragging ? 'Drop files right here!' : 'Drag and drop documents here'}
           </p>
-          <p className="text-xs text-gray-400 mb-6 uppercase tracking-wider font-medium">
-            PDF · DOCX · TXT — Max 50MB per file
+          <p className="text-xs font-bold text-gray-800 mb-8 uppercase tracking-widest">
+            Supports PDF · DOCX · TXT (Max 50MB per file)
           </p>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap justify-center gap-4">
             <input 
               ref={fileInputRef}
               type="file" 
@@ -203,9 +204,9 @@ const Upload = () => {
             />
             <label 
               htmlFor="file-upload"
-              className="px-6 py-2.5 bg-white text-[#1a1a1a] border border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 cursor-pointer flex items-center gap-2"
+              className="px-8 py-3.5 bg-white text-black border-2 border-black rounded-full font-bold text-sm shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all cursor-pointer flex items-center gap-2"
             >
-              <File className="w-4 h-4" /> Browse Files
+              <File className="w-5 h-5" /> Browse Files
             </label>
 
             <input 
@@ -219,59 +220,59 @@ const Upload = () => {
             />
             <label 
               htmlFor="folder-upload"
-              className="px-6 py-2.5 bg-white text-[#1a1a1a] border border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 cursor-pointer flex items-center gap-2"
+              className="px-8 py-3.5 bg-card-blue text-black border-2 border-black rounded-full font-bold text-sm shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all cursor-pointer flex items-center gap-2"
             >
-              <FolderPlus className="w-4 h-4" /> Browse Folder
+              <FolderPlus className="w-5 h-5" /> Browse Folder
             </label>
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="w-full mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2 animate-slide-up" style={{opacity: 1}}>
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="w-full mt-6 px-6 py-4 bg-red-100 border-2 border-black rounded-2xl shadow-retro text-red-900 font-bold text-sm flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
             {error}
           </div>
         )}
 
         {/* File Queue */}
         {files.length > 0 && (
-          <div className="w-full mt-8 animate-fade-in-up" style={{opacity: 1}}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                Queue ({files.length} {files.length === 1 ? 'file' : 'files'})
+          <div className="w-full mt-10 bg-white dark:bg-card-dark p-8 border-2 border-black rounded-3xl shadow-brutalist">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-black dark:text-white uppercase tracking-widest flex items-center gap-2">
+                <span className="bg-secondary px-2.5 py-0.5 rounded-full border border-black text-black">{files.length}</span> Ready for Redaction
               </h3>
               <button 
                 onClick={() => setFiles([])}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium"
+                className="text-xs text-red-600 font-bold uppercase tracking-wider hover:underline"
               >
                 Clear All
               </button>
             </div>
             
-            <ul className="space-y-2 mb-6 max-h-60 overflow-y-auto pr-1">
+            <ul className="space-y-3 mb-8 max-h-60 overflow-y-auto pr-2">
               {files.map((file, idx) => {
                 const badge = getFileTypeBadge(file.name);
                 return (
                   <li 
                     key={idx} 
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all duration-200 group"
+                    className="flex items-center gap-4 p-4 bg-aura-cream dark:bg-background-dark rounded-2xl border-2 border-black shadow-retro-white group"
                   >
-                    <div className="w-9 h-9 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-gray-500 text-[18px]">{getFileIcon(file.name)}</span>
+                    <div className="w-10 h-10 bg-white rounded-xl border border-black flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-black text-[22px]">{getFileIcon(file.name)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm text-[#1a1a1a] truncate block">{file.name}</span>
-                      <span className="text-[10px] text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
+                      <span className="font-bold text-base text-black dark:text-white truncate block">{file.name}</span>
+                      <span className="text-xs font-medium text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${badge.color}`}>
+                    <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full border-2 ${badge.color}`}>
                       {badge.label}
                     </span>
                     <button 
                       onClick={() => removeFile(idx)}
-                      className="p-1 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                   </li>
                 );
@@ -282,20 +283,14 @@ const Upload = () => {
               <button 
                 onClick={handleUpload}
                 disabled={isUploading}
-                className="px-10 py-3.5 bg-[#121212] text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-12 py-4 bg-primary text-white text-lg rounded-full border-2 border-black font-bold shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
               >
-                <Shield className="w-4 h-4" />
+                <Shield className="w-5 h-5" />
                 {isUploading ? 'Analyzing...' : 'Start Redaction Analysis'}
               </button>
             </div>
           </div>
         )}
-        
-        {/* Privacy Notice */}
-        <div className="mt-10 flex items-center justify-center gap-2.5 text-xs text-gray-400 max-w-md mx-auto text-center animate-fade-in-up delay-300" style={{opacity: 1}}>
-          <AlertCircle className="w-4 h-4 shrink-0 opacity-60" />
-          <p>All processing happens within this session. No data is stored persistently or transmitted externally.</p>
-        </div>
       </main>
     </PageWrapper>
   );

@@ -6,7 +6,7 @@ from typing import List
 from io import BytesIO
 from presidio_analyzer import AnalyzerEngine
 import state
-from services.heuristic import run_heuristic_detection, merge_detections
+from services.heuristic import run_heuristic_detection, merge_detections, align_detection_boundaries
 
 router = APIRouter()
 
@@ -138,8 +138,9 @@ async def upload_files(files: List[UploadFile] = File(...)):
         heuristic_dets = run_heuristic_detection(text)
         print(f"  Heuristic found {len(heuristic_dets)} detections")
 
-        # Merge without duplicates
+        # Merge without duplicates and align to exact word boundaries so emails/words are never cut in half
         merged_dets = merge_detections(model_dets, heuristic_dets)
+        merged_dets = align_detection_boundaries(text, merged_dets)
         print(f"  Merged total: {len(merged_dets)} detections")
 
         for det in merged_dets:
