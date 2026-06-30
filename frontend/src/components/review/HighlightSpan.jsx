@@ -43,7 +43,7 @@ const HighlightSpan = forwardRef(({ detection, onClick, isActive }, ref) => {
     baseStyles = isAnon
       ? 'detection-redacted bg-card-purple text-black px-1.5 py-0.5 rounded font-mono font-bold text-xs border border-black shadow-[1px_1px_0px_0px_#000]'
       : 'detection-redacted bg-black text-secondary px-1.5 py-0.5 rounded font-mono font-bold text-xs border border-black shadow-[1px_1px_0px_0px_#000]';
-    displayText = detection.custom_replacement || (isAnon ? (ANONYMIZED_REPLACEMENTS[type] || `[${cleanType}]`) : `[REDACTED ${cleanType}]`);
+    displayText = detection.custom_replacement || (isAnon ? (ANONYMIZED_REPLACEMENTS[type] || `[${cleanType}]`) : '█'.repeat(Math.max((detection.text || '').length, 6)));
     statusLabel = isAnon ? 'ANONYMIZED' : 'REDACTED';
     statusColor = 'bg-emerald-500';
   } else if (status === 'missed') {

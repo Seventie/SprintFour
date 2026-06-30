@@ -80,7 +80,7 @@ const Export = () => {
 
     fetchPreview();
     return () => { if (previewUrl) window.URL.revokeObjectURL(previewUrl); };
-  }, [activeDocId, missedCount, exportMode]);
+  }, [activeDocId, missedCount, exportMode, activeDetections]);
 
   const handleDownload = async () => {
     if (!activeDoc || missedCount > 0) return;

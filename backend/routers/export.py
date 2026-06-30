@@ -20,6 +20,7 @@ class Detection(BaseModel):
     status: str
     reason: str
     action_mode: Optional[str] = "redact"  # "redact" or "anonymize"
+    custom_replacement: Optional[str] = None
 
 class ExportRequest(BaseModel):
     doc_id: str
@@ -66,9 +67,7 @@ def get_replacement_text(det: Detection, global_mode: str) -> str:
         clean_type = re.sub(r'^(US|IN|UK|AU|CA|EU|SG)_', '', det.type, flags=re.IGNORECASE)
         clean_type = clean_type.replace('_', ' ').title()
         return f"[{clean_type}]"
-    import re
-    clean_type = re.sub(r'^(US|IN|UK|AU|CA|EU|SG)_', '', det.type, flags=re.IGNORECASE)
-    return f"[REDACTED {clean_type}]"
+    return "█" * max(len(det.text), 6)
 
 
 def strip_pdf_metadata(doc):
