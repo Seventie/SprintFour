@@ -47,9 +47,8 @@ const Upload = () => {
       await axios.post('http://localhost:8000/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      // Redirect to review workspace logic to be built in Phase 3
       setIsUploading(false);
-      alert('Upload stub hit! Will redirect to Workspace in Phase 3.');
+      navigate('/review');
     } catch (err) {
       console.error(err);
       setIsUploading(false);
