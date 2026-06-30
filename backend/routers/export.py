@@ -30,18 +30,28 @@ class ExportRequest(BaseModel):
 
 
 ANONYMIZED_REPLACEMENTS = {
-    "PERSON": "[John Doe]",
-    "EMAIL_ADDRESS": "[user@domain.com]",
-    "PHONE_NUMBER": "[555-0199]",
-    "CREDIT_CARD": "[XXXX-XXXX-XXXX-1234]",
-    "DATE_TIME": "[2026-01-01]",
-    "IP_ADDRESS": "[192.0.2.1]",
-    "LOCATION": "[City, Country]",
+    "PERSON": "[Person Name]",
+    "EMAIL_ADDRESS": "[Email Address]",
+    "PHONE_NUMBER": "[Phone Number]",
+    "CREDIT_CARD": "[Card Number]",
+    "DATE_TIME": "[Date / Time]",
+    "IP_ADDRESS": "[IP Address]",
+    "LOCATION": "[Location]",
     "NRP": "[Protected Group]",
-    "MEDICAL_LICENSE": "[MD-999999]",
-    "URL": "[https://secure-domain.com]",
-    "US_SSN": "[XXX-XX-0000]",
-    "US_DRIVER_LICENSE": "[DL-XXXXX]",
+    "MEDICAL_LICENSE": "[Medical License]",
+    "URL": "[Secure Link]",
+    "US_SSN": "[National ID / SSN]",
+    "US_DRIVER_LICENSE": "[Driver License]",
+    "US_BANK_NUMBER": "[Bank Account Number]",
+    "US_VEHICLE_NUMBER": "[Vehicle Number]",
+    "US_PASSPORT": "[Passport Number]",
+    "US_ITIN": "[Tax ID Number]",
+    "IN_PAN": "[Tax ID Number]",
+    "IN_AADHAAR": "[National ID Number]",
+    "UK_NHS": "[Health ID Number]",
+    "SALARY_FINANCIAL": "[Financial Amount]",
+    "GRADE_LEVEL": "[Pay Grade / Level]",
+    "IDENTIFIER_NUMBER": "[ID Number]",
 }
 
 
@@ -50,8 +60,15 @@ def get_replacement_text(det: Detection, global_mode: str) -> str:
         return det.custom_replacement.strip()
     mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
     if mode == "anonymize":
-        return ANONYMIZED_REPLACEMENTS.get(det.type, f"[Anonymized {det.type}]")
-    return f"[REDACTED {det.type}]"
+        if det.type in ANONYMIZED_REPLACEMENTS:
+            return ANONYMIZED_REPLACEMENTS[det.type]
+        import re
+        clean_type = re.sub(r'^(US|IN|UK|AU|CA|EU|SG)_', '', det.type, flags=re.IGNORECASE)
+        clean_type = clean_type.replace('_', ' ').title()
+        return f"[{clean_type}]"
+    import re
+    clean_type = re.sub(r'^(US|IN|UK|AU|CA|EU|SG)_', '', det.type, flags=re.IGNORECASE)
+    return f"[REDACTED {clean_type}]"
 
 
 def strip_pdf_metadata(doc):
@@ -76,38 +93,21 @@ def strip_pdf_metadata(doc):
 
 
 def strip_docx_metadata(doc):
-    """Strip metadata, comments, and tracked changes from DOCX."""
+    """Strip metadata, owner, comments, and revision history from DOCX."""
     stripped_fields = []
     cp = doc.core_properties
-    if cp.author:
-        stripped_fields.append('author')
-        cp.author = ''
-    if cp.last_modified_by:
-        stripped_fields.append('last_modified_by')
-        cp.last_modified_by = ''
-    if cp.title:
-        stripped_fields.append('title')
-        cp.title = 'Redacted Document'
-    if cp.subject:
-        stripped_fields.append('subject')
-        cp.subject = ''
-    if cp.keywords:
-        stripped_fields.append('keywords')
-        cp.keywords = ''
-    if cp.comments:
-        stripped_fields.append('comments')
-        cp.comments = ''
-    if cp.category:
-        stripped_fields.append('category')
-        cp.category = ''
+    for field in ['author', 'last_modified_by', 'title', 'subject', 'keywords', 'comments', 'category', 'identifier', 'language', 'version']:
+        if getattr(cp, field, None):
+            stripped_fields.append(field)
+            setattr(cp, field, '' if field != 'title' else 'Redacted Document')
     try:
-        comments_part = None
-        for rel in doc.part.rels.values():
-            if 'comments' in str(rel.reltype).lower():
-                comments_part = rel
-                break
-        if comments_part:
-            stripped_fields.append('inline_comments')
+        cp.revision = 1
+    except Exception:
+        pass
+    try:
+        for rel in list(doc.part.rels.values()):
+            if any(k in str(rel.reltype).lower() for k in ['comments', 'revisions', 'customxml', 'people']):
+                stripped_fields.append(str(rel.reltype).split('/')[-1])
     except Exception:
         pass
     return stripped_fields
@@ -205,6 +205,15 @@ def redact_excel(file_bytes: bytes, detections: List[Detection], global_mode: st
     try:
         import openpyxl
         wb = openpyxl.load_workbook(BytesIO(file_bytes))
+        stripped_meta = ["author", "last_modified_by"]
+        if hasattr(wb, 'properties'):
+            wb.properties.creator = 'Conseal Redaction Engine'
+            wb.properties.lastModifiedBy = ''
+            wb.properties.title = 'Redacted Spreadsheet'
+            wb.properties.subject = ''
+            wb.properties.keywords = ''
+            wb.properties.category = ''
+            wb.properties.company = ''
         for sheet in wb.sheetnames:
             ws = wb[sheet]
             for row in ws.iter_rows():
@@ -218,7 +227,7 @@ def redact_excel(file_bytes: bytes, detections: List[Detection], global_mode: st
                         cell.value = val
         out = BytesIO()
         wb.save(out)
-        return out.getvalue(), ["author", "last_modified_by"]
+        return out.getvalue(), stripped_meta
     except Exception as e:
         print("Excel export error:", e)
         return redact_csv(file_bytes, detections, global_mode)

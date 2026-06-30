@@ -11,10 +11,14 @@ const ExportDocViewer = ({ blob, fileType, filename }) => {
   const [textContent, setTextContent] = useState('');
   const [pdfUrl, setPdfUrl] = useState(null);
 
-  const isPdf = fileType === 'pdf' || filename?.toLowerCase().endsWith('.pdf');
-  const isDocx = fileType === 'docx' || filename?.toLowerCase().endsWith('.docx');
-  const isExcel = fileType === 'xlsx' || fileType === 'xls' || filename?.toLowerCase().endsWith('.xlsx') || filename?.toLowerCase().endsWith('.xls');
-  const isCsv = fileType === 'csv' || filename?.toLowerCase().endsWith('.csv');
+  const cleanType = (fileType || '').toString().toLowerCase();
+  const cleanName = (filename || '').toString().toLowerCase();
+  const mimeType = (blob?.type || '').toLowerCase();
+
+  const isPdf = cleanType === 'pdf' || cleanName.endsWith('.pdf') || mimeType.includes('pdf');
+  const isDocx = cleanType === 'docx' || cleanName.endsWith('.docx') || mimeType.includes('wordprocessingml');
+  const isExcel = cleanType === 'xlsx' || cleanType === 'xls' || cleanName.endsWith('.xlsx') || cleanName.endsWith('.xls') || mimeType.includes('spreadsheetml') || mimeType.includes('excel');
+  const isCsv = cleanType === 'csv' || cleanName.endsWith('.csv') || mimeType.includes('csv');
 
   useEffect(() => {
     if (!blob) return;
@@ -22,7 +26,8 @@ const ExportDocViewer = ({ blob, fileType, filename }) => {
     setError(null);
 
     if (isPdf) {
-      const url = URL.createObjectURL(blob);
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
       setPdfUrl(url);
       setLoading(false);
       return () => URL.revokeObjectURL(url);
@@ -95,7 +100,9 @@ const ExportDocViewer = ({ blob, fileType, filename }) => {
           <span>📄 Native PDF Layout Render</span>
           <span className="bg-white px-2 py-0.5 rounded border border-black text-[10px]">Sanitized & Ready</span>
         </div>
-        <iframe src={`${pdfUrl}#toolbar=0`} className="w-full flex-1 border-none" title="PDF Preview" />
+        <object data={`${pdfUrl}#toolbar=0`} type="application/pdf" className="w-full flex-1 border-none min-h-[650px]">
+          <iframe src={`${pdfUrl}#toolbar=0`} className="w-full h-full border-none min-h-[650px]" title="PDF Preview" />
+        </object>
       </div>
     );
   }

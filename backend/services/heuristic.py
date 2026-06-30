@@ -78,6 +78,34 @@ PATTERNS: List[Tuple[re.Pattern, str, float, str]] = [
         0.70,
         'Matches potential credit/debit card number pattern — verify with Luhn check.'
     ),
+    # Hyphenated / Formatted Phone Numbers (e.g., 123-456-7890, +1-800-555-0199, (415) 555-0123)
+    (
+        re.compile(r'\b(?:\+\d{1,3}[\s-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s-]\d{3,4}[\s-]\d{4}\b'),
+        'PHONE_NUMBER',
+        0.92,
+        'Matches hyphenated or structured phone number format.'
+    ),
+    # Salary / Currency / Financial amounts (e.g., $120,000, $85,500.00, 150,000 USD, INR 1,200,000)
+    (
+        re.compile(r'(?:[$€£¥₹]\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\b\d{1,3}(?:,\d{3})*(?:\.\d{2})?\s*(?:USD|INR|EUR|GBP|AUD|CAD)\b)'),
+        'SALARY_FINANCIAL',
+        0.88,
+        'Matches sensitive salary or currency financial amount.'
+    ),
+    # Grades, Pay Levels, and Classifications (e.g., Grade A, Grade 12, Pay Grade GS-14, Level 5, Score: 98)
+    (
+        re.compile(r'\b(?:Pay\s+)?(?:Grade|Level|Band|Rank|Class|Tier|Score)\s*[:#-]?\s*(?:[A-Z0-9]+(?:-[A-Z0-9]+)?)\b', re.IGNORECASE),
+        'GRADE_LEVEL',
+        0.85,
+        'Matches organizational pay grade, level, or evaluation score classification.'
+    ),
+    # Employee / ID numbers (e.g., Employee ID: E-8912, Staff No: 481923)
+    (
+        re.compile(r'\b(?:Employee|Staff|Personnel|Badge|Member|Account)\s*(?:ID|No|Number|#)\s*[:#-]?\s*([A-Z0-9-]+)\b', re.IGNORECASE),
+        'IDENTIFIER_NUMBER',
+        0.86,
+        'Matches organizational employee or staff identifier number.'
+    ),
 ]
 
 

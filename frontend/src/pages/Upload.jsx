@@ -48,10 +48,10 @@ const Upload = () => {
   };
 
   const addFiles = (newFiles) => {
-    const allowed = ['.txt', '.pdf', '.docx'];
+    const allowed = ['.txt', '.pdf', '.docx', '.csv', '.xlsx', '.xls'];
     const valid = newFiles.filter(f => allowed.some(ext => f.name.toLowerCase().endsWith(ext)));
     if (valid.length < newFiles.length) {
-      setError(`${newFiles.length - valid.length} file(s) skipped — only TXT, PDF, DOCX supported.`);
+      setError(`${newFiles.length - valid.length} file(s) skipped — only TXT, PDF, DOCX, CSV, XLSX supported.`);
       setTimeout(() => setError(null), 4000);
     }
     setFiles(prev => [...prev, ...valid]);
@@ -65,6 +65,7 @@ const Upload = () => {
     const lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return 'picture_as_pdf';
     if (lower.endsWith('.docx')) return 'article';
+    if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv')) return 'table_chart';
     return 'description';
   };
 
@@ -72,6 +73,8 @@ const Upload = () => {
     const lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return { label: 'PDF', color: 'bg-card-orange text-black border-black' };
     if (lower.endsWith('.docx')) return { label: 'DOCX', color: 'bg-card-blue text-black border-black' };
+    if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return { label: 'XLSX', color: 'bg-emerald-300 text-black border-black' };
+    if (lower.endsWith('.csv')) return { label: 'CSV', color: 'bg-amber-300 text-black border-black' };
     return { label: 'TXT', color: 'bg-card-purple text-black border-black' };
   };
 
@@ -191,7 +194,7 @@ const Upload = () => {
             {isDragging ? 'Drop files right here!' : 'Drag and drop documents here'}
           </p>
           <p className="text-xs font-bold text-gray-800 mb-8 uppercase tracking-widest">
-            Supports PDF · DOCX · TXT (Max 50MB per file)
+            Supports PDF · DOCX · XLSX · CSV · TXT (Max 50MB per file)
           </p>
           
           <div className="flex flex-wrap justify-center gap-4">
@@ -202,7 +205,7 @@ const Upload = () => {
               id="file-upload" 
               className="hidden" 
               onChange={handleFileChange}
-              accept=".txt,.pdf,.docx"
+              accept=".txt,.pdf,.docx,.csv,.xlsx,.xls"
             />
             <label 
               htmlFor="file-upload"

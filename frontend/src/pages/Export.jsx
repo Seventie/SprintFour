@@ -65,7 +65,9 @@ const Export = () => {
           try { setStrippedMeta(JSON.parse(metaHeader)); } catch (e) { /* ignore */ }
         }
 
-        const blob = new Blob([resp.data]);
+        const isPdf = activeDoc?.file_type?.toLowerCase() === 'pdf' || activeDoc?.filename?.toLowerCase().endsWith('.pdf');
+        const mimeType = isPdf ? 'application/pdf' : resp.data.type || 'application/octet-stream';
+        const blob = new Blob([resp.data], { type: mimeType });
         setPreviewBlob(blob);
         const url = window.URL.createObjectURL(blob);
         setPreviewUrl(url);

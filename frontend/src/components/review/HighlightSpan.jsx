@@ -12,26 +12,38 @@ const HighlightSpan = forwardRef(({ detection, onClick, isActive }, ref) => {
   let statusColor = '';
 
   const ANONYMIZED_REPLACEMENTS = {
-    "PERSON": "[John Doe]",
-    "EMAIL_ADDRESS": "[user@domain.com]",
-    "PHONE_NUMBER": "[555-0199]",
-    "CREDIT_CARD": "[XXXX-XXXX-XXXX-1234]",
-    "DATE_TIME": "[2026-01-01]",
-    "IP_ADDRESS": "[192.0.2.1]",
-    "LOCATION": "[City, Country]",
+    "PERSON": "[Person Name]",
+    "EMAIL_ADDRESS": "[Email Address]",
+    "PHONE_NUMBER": "[Phone Number]",
+    "CREDIT_CARD": "[Card Number]",
+    "DATE_TIME": "[Date / Time]",
+    "IP_ADDRESS": "[IP Address]",
+    "LOCATION": "[Location]",
     "NRP": "[Protected Group]",
-    "MEDICAL_LICENSE": "[MD-999999]",
-    "URL": "[https://secure-domain.com]",
-    "US_SSN": "[XXX-XX-0000]",
-    "US_DRIVER_LICENSE": "[DL-XXXXX]",
+    "MEDICAL_LICENSE": "[Medical License]",
+    "URL": "[Secure Link]",
+    "US_SSN": "[National ID / SSN]",
+    "US_DRIVER_LICENSE": "[Driver License]",
+    "US_BANK_NUMBER": "[Bank Account Number]",
+    "US_VEHICLE_NUMBER": "[Vehicle Number]",
+    "US_PASSPORT": "[Passport Number]",
+    "US_ITIN": "[Tax ID Number]",
+    "IN_PAN": "[Tax ID Number]",
+    "IN_AADHAAR": "[National ID Number]",
+    "UK_NHS": "[Health ID Number]",
+    "SALARY_FINANCIAL": "[Financial Amount]",
+    "GRADE_LEVEL": "[Pay Grade / Level]",
+    "IDENTIFIER_NUMBER": "[ID Number]",
   };
+
+  const cleanType = type.replace(/^(US|IN|UK|AU|CA|EU|SG)_/i, '').replace(/_/g, ' ');
 
   if (status === 'redacted' || status === 'added') {
     const isAnon = detection.action_mode === 'anonymize';
     baseStyles = isAnon
       ? 'detection-redacted bg-card-purple text-black px-1.5 py-0.5 rounded font-mono font-bold text-xs border border-black shadow-[1px_1px_0px_0px_#000]'
       : 'detection-redacted bg-black text-secondary px-1.5 py-0.5 rounded font-mono font-bold text-xs border border-black shadow-[1px_1px_0px_0px_#000]';
-    displayText = detection.custom_replacement || (isAnon ? (ANONYMIZED_REPLACEMENTS[type] || `[Anonymized ${type}]`) : `[REDACTED ${type}]`);
+    displayText = detection.custom_replacement || (isAnon ? (ANONYMIZED_REPLACEMENTS[type] || `[${cleanType}]`) : `[REDACTED ${cleanType}]`);
     statusLabel = isAnon ? 'ANONYMIZED' : 'REDACTED';
     statusColor = 'bg-emerald-500';
   } else if (status === 'missed') {
