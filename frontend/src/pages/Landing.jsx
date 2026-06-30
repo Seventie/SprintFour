@@ -25,11 +25,14 @@ const Landing = () => {
         {/* Hero Icon/Logo Graphic */}
         <div className="relative w-24 h-24 mb-10 flex items-center justify-center animate-float">
           {/* Shadow/Background Layers for 3D effect */}
-          <div className="absolute inset-0 bg-red-100 rounded-2xl transform translate-y-[-10px] scale-90 opacity-60"></div>
-          <div className="absolute inset-0 bg-red-200 rounded-2xl transform translate-y-[-5px] scale-95 opacity-80"></div>
-          {/* Main Red Icon */}
-          <div className="relative w-20 h-20 bg-redaction-primary rounded-2xl flex items-center justify-center shadow-sm">
-            <ShieldAlert className="w-10 h-10 text-white" />
+          <div className="absolute inset-0 bg-[#f1f5f9] rounded-2xl transform translate-y-[-10px] scale-90 opacity-60"></div>
+          <div className="absolute inset-0 bg-[#e2e8f0] rounded-2xl transform translate-y-[-5px] scale-95 opacity-80"></div>
+          {/* Main Green Icon */}
+          <div className="relative w-20 h-20 bg-[#63e65c] rounded-2xl flex items-center justify-center shadow-sm">
+            <svg fill="none" height="40" viewBox="0 0 40 40" width="40" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 10H30V15H17.5L15 22.5H22.5L20 30H12.5L15 22.5L12.5 30H5L10 15H10Z" fill="#121212"></path>
+              <path d="M12.5 15H27.5L25 22.5H15L12.5 15Z" fill="#121212"></path>
+            </svg>
           </div>
         </div>
         
@@ -47,10 +50,10 @@ const Landing = () => {
         
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto animate-fade-in-up delay-200">
-          <Link to="/upload" className="w-full sm:w-auto px-8 py-3.5 bg-brand-black text-white rounded-full font-semibold text-sm hover:bg-gray-800 transition-all duration-300 hover:scale-105 flex items-center justify-center">
+          <Link to="/upload" className="w-full sm:w-auto px-8 py-3.5 bg-[#121212] text-white rounded-full font-semibold text-sm hover:bg-gray-800 transition-all duration-300 hover:scale-105 flex items-center justify-center">
             Open Workspace
           </Link>
-          <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3.5 bg-white text-brand-black border border-brand-border rounded-full font-semibold text-sm hover:bg-gray-50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2">
+          <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3.5 bg-white text-[#121212] border border-[#e5e7eb] rounded-full font-semibold text-sm hover:bg-gray-50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2">
             See how it works
             <ArrowRight className="w-4 h-4" />
           </a>
