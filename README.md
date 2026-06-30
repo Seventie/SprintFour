@@ -3,6 +3,8 @@
 # 🎥 Submission Video
 > **📺 Watch the demo here:**  
 > [https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
+Caution : Had a bug in my code that wasnot redacting my text files and documents have solved the bug and below is the result
+> <img width="1172" height="1042" alt="image" src="https://github.com/user-attachments/assets/9113c8cb-b104-4b8f-8ac5-5b83a6c6d908" />
 
 > **⚡ Recommended:** Watch the video at **1.5× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
 
