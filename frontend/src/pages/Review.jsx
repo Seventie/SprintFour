@@ -14,6 +14,8 @@ const Review = () => {
   const [undoToast, setUndoToast] = useState(null);
   const [reviewIdx, setReviewIdx] = useState(0);
   const [viewMode, setViewMode] = useState('parsed');
+  const [panelMode, setPanelMode] = useState('docked'); // 'docked' | 'floating' | 'minimized'
+  const [pdfSearchQuery, setPdfSearchQuery] = useState('');
   const viewerRef = useRef(null);
   const detectionRefs = useRef({});
 
@@ -81,6 +83,7 @@ const Review = () => {
 
   // --- Click-to-explain: ANY word in the document ---
   const handleWordClick = async (word, charStart, charEnd) => {
+    setPdfSearchQuery(word);
     setActiveDetection(null);
     setExplanation(null);
     setIsExplaining(true);
@@ -113,6 +116,7 @@ const Review = () => {
 
   // Click on a HighlightSpan detection
   const handleDetectionClick = useCallback((det) => {
+    setPdfSearchQuery(det.text);
     setActiveDetection(det);
     setExplanation({
       selected_text: det.text,
@@ -202,6 +206,7 @@ const Review = () => {
     if (!selection || selection.isCollapsed || !activeDoc) return;
     const selectedText = selection.toString().trim();
     if (!selectedText || selectedText.length < 2) return;
+    setPdfSearchQuery(selectedText);
     const content = activeDoc.content || '';
     const charStart = content.indexOf(selectedText);
     if (charStart === -1) return;
@@ -223,6 +228,16 @@ const Review = () => {
       type: 'CUSTOM', reason: 'Manually marked as PII by reviewer',
     }).catch(() => {});
     selection.removeAllRanges();
+  };
+
+  const handleTextSelectionSync = () => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      const text = selection.toString().trim();
+      if (text.length >= 2) {
+        setPdfSearchQuery(text);
+      }
+    }
   };
 
   // --- Word-level text rendering ---
@@ -386,14 +401,14 @@ const Review = () => {
           {viewMode === 'pdf' && activeDoc?.file_type === 'pdf' ? (
             <div className="w-full h-full bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden">
               <iframe
-                src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0`}
+                src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0${pdfSearchQuery ? `&search=${encodeURIComponent(pdfSearchQuery)}` : ''}`}
                 className="w-full h-full border-none"
                 title="Original PDF Preview"
               />
             </div>
           ) : viewMode === 'split' && activeDoc?.file_type === 'pdf' ? (
             <div className="w-full h-full grid grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-8 relative overflow-y-auto doc-paper">
+              <div className="bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-8 relative overflow-y-auto doc-paper" onMouseUp={handleTextSelectionSync}>
                 <div className="absolute top-4 right-4 border-2 border-black bg-card-purple text-black font-bold text-[9px] px-2.5 py-0.5 uppercase rounded-full tracking-widest">Interactive Parsed</div>
                 <div className="font-sans text-sm text-gray-900 dark:text-gray-100 leading-[2.2] whitespace-pre-wrap pt-4">
                   {renderText()}
@@ -402,16 +417,17 @@ const Review = () => {
               <div className="bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden flex flex-col">
                 <div className="bg-card-yellow border-b-2 border-black px-4 py-2 text-xs font-bold text-black uppercase tracking-wider flex items-center justify-between">
                   <span>Original PDF Layout Preview</span>
+                  {pdfSearchQuery && <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-black text-black">Highlighting: "{pdfSearchQuery}"</span>}
                 </div>
                 <iframe
-                  src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0`}
+                  src={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw#toolbar=0${pdfSearchQuery ? `&search=${encodeURIComponent(pdfSearchQuery)}` : ''}`}
                   className="w-full flex-1 border-none"
                   title="Original PDF Preview"
                 />
               </div>
             </div>
           ) : (
-            <div className="w-[700px] bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-14 relative doc-paper">
+            <div className="w-[700px] bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-14 relative doc-paper" onMouseUp={handleTextSelectionSync}>
               <div className="absolute top-6 right-6 border-2 border-black bg-card-purple text-black font-bold text-[10px] px-3 py-1 uppercase rounded-full tracking-widest shadow-[2px_2px_0px_0px_#000]">Confidential</div>
               <div className="font-sans text-base text-gray-900 dark:text-gray-100 leading-[2.2] whitespace-pre-wrap">
                 {renderText()}
@@ -438,16 +454,31 @@ const Review = () => {
       </main>
 
       {/* RIGHT: Reasoning & Triage Panel */}
-      <aside className="pane-right flex-1 h-full bg-card-purple flex flex-col z-0 overflow-hidden border-l-2 border-black">
+      {panelMode === 'minimized' ? (
+        <button
+          onClick={() => setPanelMode('docked')}
+          className="fixed bottom-6 right-6 z-50 bg-card-purple text-black px-5 py-3 rounded-full border-2 border-black font-bold text-xs shadow-brutalist hover:scale-105 transition-all flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-[18px]">psychology</span>
+          Show Reasoning & Triage ({attentionItems.length} left)
+        </button>
+      ) : (
+      <aside className={panelMode === 'floating' ? "fixed bottom-6 right-6 z-40 w-[420px] max-h-[78vh] bg-card-purple flex flex-col rounded-3xl border-2 border-black shadow-brutalist-lg overflow-hidden animate-scale-in" : "pane-right w-[400px] shrink-0 h-full bg-card-purple flex flex-col z-0 overflow-hidden border-l-2 border-black"}>
         {/* Panel Header */}
-        <header className="h-16 flex items-center justify-between px-5 border-b-2 border-black shrink-0 bg-card-blue">
+        <header className="h-14 flex items-center justify-between px-4 border-b-2 border-black shrink-0 bg-card-blue">
           <span className="text-xs font-bold text-black uppercase tracking-widest font-mono">Reasoning & Triage</span>
-          <div className="flex items-center gap-2">
-            <button onClick={handleUndo} disabled={history.length === 0} className="text-xs bg-white hover:bg-gray-100 text-black border border-black px-3 py-1.5 rounded-full transition-colors disabled:opacity-40 flex items-center gap-1 font-bold shadow-[2px_2px_0px_0px_#000]">
-              <span className="material-symbols-outlined text-[16px]">undo</span>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setPanelMode(panelMode === 'docked' ? 'floating' : 'docked')} className="p-1 bg-white hover:bg-gray-100 rounded-full border border-black text-black shadow-brutalist-xs flex items-center justify-center" title={panelMode === 'docked' ? "Float Window" : "Dock Window"}>
+              <span className="material-symbols-outlined text-[14px] leading-none">{panelMode === 'docked' ? 'open_in_new' : 'dock_to_right'}</span>
             </button>
-            <button onClick={handleExport} disabled={missedCount > 0} className="bg-secondary text-black px-4 py-1.5 rounded-full border-2 border-black font-bold text-xs hover:shadow-retro transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-brutalist-sm">
-              {missedCount > 0 ? `${missedCount} pending` : 'Export Clean →'}
+            <button onClick={() => setPanelMode('minimized')} className="p-1 bg-white hover:bg-gray-100 rounded-full border border-black text-black shadow-brutalist-xs flex items-center justify-center" title="Minimize Panel">
+              <span className="material-symbols-outlined text-[14px] leading-none">remove</span>
+            </button>
+            <button onClick={handleUndo} disabled={history.length === 0} className="p-1 bg-white hover:bg-gray-100 text-black border border-black rounded-full transition-colors disabled:opacity-40 flex items-center justify-center font-bold shadow-brutalist-xs" title="Undo">
+              <span className="material-symbols-outlined text-[14px] leading-none">undo</span>
+            </button>
+            <button onClick={handleExport} disabled={missedCount > 0} className="bg-secondary text-black px-3 py-1 rounded-full border-2 border-black font-bold text-[11px] hover:shadow-retro transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-brutalist-xs">
+              {missedCount > 0 ? `${missedCount} left` : 'Export →'}
             </button>
           </div>
         </header>
@@ -641,6 +672,7 @@ const Review = () => {
           )}
         </div>
       </aside>
+      )}
 
       {/* Bulk Modal */}
       {showBulkModal && (

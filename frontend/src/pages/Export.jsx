@@ -14,15 +14,13 @@ const Export = () => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [textPreviewContent, setTextPreviewContent] = useState(null);
-  const [strippedMeta, setStrippedMeta] = useState([]);
-  const [exportMode, setExportMode] = useState('redact');
-
   useEffect(() => {
     if (documents.length === 0) navigate('/upload');
   }, [documents, navigate]);
 
   const activeDoc = documents.find(d => d.doc_id === activeDocId);
   const activeDetections = activeDoc ? (detections[activeDoc.doc_id] || []) : [];
+  const exportMode = activeDoc?.default_action_mode || 'redact';
 
   const redactedItems = activeDetections.filter(d => d.status === 'redacted' || d.status === 'added');
   const redactedCount = redactedItems.length;
@@ -256,25 +254,6 @@ const Export = () => {
                 <div className="bg-white p-4 rounded-3xl text-center border-2 border-black shadow-retro">
                   <div className="text-3xl font-display font-bold text-black">{dismissedCount}</div>
                   <div className="text-[10px] text-gray-600 uppercase font-bold tracking-widest mt-1">Dismissed Safe</div>
-                </div>
-              </div>
-
-              {/* Security Mode Selector */}
-              <div className="bg-white border-2 border-black rounded-3xl p-5 shadow-brutalist-sm space-y-3">
-                <span className="text-xs font-bold text-black uppercase tracking-widest block font-mono">Security Output Mode</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setExportMode('redact')}
-                    className={`py-2.5 px-3 rounded-2xl font-bold text-xs border-2 transition-all flex items-center justify-center gap-1.5 ${exportMode === 'redact' ? 'bg-primary text-white border-black shadow-retro' : 'bg-aura-cream text-black border-black/30 hover:border-black'}`}
-                  >
-                    Redact (Blackout)
-                  </button>
-                  <button
-                    onClick={() => setExportMode('anonymize')}
-                    className={`py-2.5 px-3 rounded-2xl font-bold text-xs border-2 transition-all flex items-center justify-center gap-1.5 ${exportMode === 'anonymize' ? 'bg-secondary text-black border-black shadow-retro' : 'bg-aura-cream text-black border-black/30 hover:border-black'}`}
-                  >
-                    Anonymize (Synthetic)
-                  </button>
                 </div>
               </div>
 
