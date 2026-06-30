@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { ShieldAlert, ArrowRight } from 'lucide-react';
-import PageWrapper from '../components/layout/PageWrapper';
 
 const Landing = () => {
   return (
