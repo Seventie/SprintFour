@@ -1,5 +1,21 @@
 # Conseal Hackathon Project (SprintFour 2026)
-# Sorry Slow network my video is being uploaded 
+
+# 🎥 Submission Video
+> **📺 Watch the demo here:**  
+> https://drive.google.com/file/d/1-TqqX5580QTegjAQ57R-Ow2sAbxGR3dm/view?usp=sharing
+
+> **⚡ Recommended:** Watch the video at **2× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
+
+## ▶️ How to Watch at 2× Speed (Google Drive)
+
+1. Open the video using the link above.
+2. Click **View** in the top menu.
+3. Select **Playback speed**.
+4. Choose **2×**.
+
+---
+
+> 💡 **Tip:** The video covers the complete workflow, architecture, implementation, and key features of our solution.
 
 Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
