@@ -5,25 +5,43 @@ Conseal is a state-of-the-art desktop application built to anonymize and redact 
 ## Key Capabilities & Supported Formats
 
 Conseal natively supports multi-format document ingestion and processing:
-- **PDF Documents (`.pdf`)**: Layout extraction and interactive visual DOM rendering via `react-pdf` with real-time highlight synchronization.
+- **PDF Documents (`.pdf`)**: Layout extraction and interactive visual DOM rendering via `react-pdf` with real-time highlight synchronization and clickable link removal.
 - **Microsoft Word (`.docx`)**: Paragraph and table structure extraction with clean metadata sanitization.
 - **Spreadsheets (`.xlsx`, `.xls`, `.csv`)**: Full multi-sheet Excel workbook and CSV table parsing via `openpyxl` and `pandas`, allowing cell-by-cell PII detection and redaction.
 - **Plain Text (`.txt`)**: High-speed UTF-8 token analysis.
 
-## Core Architectural Phases & Features
+## Core Architectural Features & UI/UX Innovations
 
-### 1. Dual-Layer AI Detection Engine
-- **Transformer NLP Layer**: Integrated spaCy transformer model (`en_core_web_trf`) and Microsoft Presidio for contextual entity extraction (PERSON, EMAIL, PHONE, SSN, CREDIT_CARD, MEDICAL_LICENSE, etc.).
-- **Heuristic & Regex Layer**: High-precision fallback matching rules with word-boundary alignment to ensure exact character offsets.
+### 1. Dual-Layer AI Detection Engine with spaCy Token Precision
+- **Transformer NLP Layer**: Integrated spaCy transformer model (`en_core_web_trf`) and Microsoft Presidio for exact word-boundary entity extraction (PERSON, EMAIL, PHONE, SSN, CREDIT_CARD, MEDICAL_LICENSE, etc.).
+- **Heuristic & Regex Layer**: High-precision fallback matching rules with strict word-boundary alignment so tokens never get cut in half.
 
-### 2. Interactive Review Workspace
+### 2. Interactive Review Workspace & Custom Renaming
+- **Custom Synthetic Renaming / On-the-Fly Editing**: Users can click any detected or anonymized word and rename its synthetic label (e.g., rename `[John Doe]` to `[Client A]` or `[CEO]`).
+- **High-Speed Keyboard Shortcuts**: Reviewers can process documents at lightning speed without touching the mouse:
+  - `R` or `1`: Redact active item (Blackout)
+  - `A` or `2`: Anonymize active item (Synthetic Tag)
+  - `D` or `3`: Dismiss active item (Keep safe)
+  - `Tab` or `N` / `ArrowRight`: Jump to next unreviewed item
+  - `Ctrl + Z`: Undo last action
 - **Draggable & Floatable Reasoning Panel**: The Reasoning & Triage window can be docked to the sidebar, minimized into a floating pill (`⚡ Show Reasoning & Triage`), or detached into a draggable popover window positioned anywhere on the screen.
 - **Bidirectional Highlight Synchronization**: Selecting any word or entity in the Interactive Parsed View immediately highlights and pulses the matching text string directly inside the Original PDF Layout Preview using `react-pdf`.
-- **Per-Document Security Mode**: Users can toggle between **Redact (Blackout)** and **Anonymize ([Tag])** modes per file on upload or on individual entities.
+- **Per-Document & Per-Entity Security Mode**: Users can toggle between **Redact (Blackout)** and **Anonymize ([Tag])** modes on the file upload card or individual detections.
 
-### 3. Export & Sanitization
+### 3. Total Export Sanitization & Security Audit Checklist
 - Exports clean documents in their native format (`.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`).
-- Strips hidden file metadata (author, title, creation history) via `X-Stripped-Metadata` headers.
+- **Hidden Hyperlink & URI Neutralization**: Automatically identifies and deletes hidden clickable tracking links inside PDFs during redaction export.
+- **Metadata Sanitization**: Strips document metadata (author, title, creation dates, revision history) and provides explicit verification badges on the Export Hub screen.
+
+## Test Sample Suite (`test_samples/`)
+
+To quickly benchmark and validate the system across various real-world scenarios, 6 realistic test documents are included in the `test_samples/` directory:
+1. `Sample_Financial_Report_2026.pdf`: Formal audit report with executive compensation, SSNs, credit cards, and IP addresses.
+2. `Sample_Confidential_Letter.pdf`: Legal severance agreement with driver license numbers, bank routing codes, and personal addresses.
+3. `Sample_Executive_Memo.docx`: Internal board memorandum with wire routing numbers and sensitive attorney contact lines.
+4. `Sample_Medical_Notes.docx`: Clinical discharge summary with patient MRNs, physician medical license IDs, and insurance policy codes.
+5. `Sample_Customer_List.txt`: UTF-8 customer roster with credit card numbers and IP addresses.
+6. `Sample_Employee_Payroll.csv`: Spreadsheet with employee payroll, SSNs, and direct deposit details.
 
 ## How to Run Locally
 

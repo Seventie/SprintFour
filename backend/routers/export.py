@@ -46,10 +46,12 @@ ANONYMIZED_REPLACEMENTS = {
 
 
 def get_replacement_text(det: Detection, global_mode: str) -> str:
-    mode = det.action_mode if det.action_mode in ("redact", "anonymize") else global_mode
+    if getattr(det, "custom_replacement", None) and det.custom_replacement.strip():
+        return det.custom_replacement.strip()
+    mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
     if mode == "anonymize":
-        return ANONYMIZED_REPLACEMENTS.get(det.type, "[ANONYMIZED]")
-    return "[REDACTED]"
+        return ANONYMIZED_REPLACEMENTS.get(det.type, f"[Anonymized {det.type}]")
+    return f"[REDACTED {det.type}]"
 
 
 def strip_pdf_metadata(doc):
@@ -113,10 +115,15 @@ def strip_docx_metadata(doc):
 
 def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     doc = fitz.open(stream=file_bytes, filetype="pdf")
+    links_removed = 0
     for page in doc:
+        links = page.get_links()
+        for link in links:
+            page.delete_link(link)
+            links_removed += 1
         for det in detections:
             text_instances = page.search_for(det.text)
-            mode = det.action_mode if det.action_mode in ("redact", "anonymize") else global_mode
+            mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
             replacement = get_replacement_text(det, global_mode)
             for inst in text_instances:
                 if mode == "anonymize":
@@ -125,6 +132,8 @@ def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str)
                     page.add_redact_annot(inst, fill=(0, 0, 0))
         page.apply_redactions()
     stripped = strip_pdf_metadata(doc)
+    if links_removed > 0:
+        stripped.append(f"{links_removed} hidden clickable hyperlinks sanitized")
     out_pdf = doc.write()
     doc.close()
     return out_pdf, stripped

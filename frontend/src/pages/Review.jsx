@@ -17,6 +17,7 @@ const Review = () => {
   const [viewMode, setViewMode] = useState('parsed');
   const [panelMode, setPanelMode] = useState('docked'); // 'docked' | 'floating' | 'minimized'
   const [pdfSearchQuery, setPdfSearchQuery] = useState('');
+  const [customLabelInput, setCustomLabelInput] = useState('');
   const [floatingPos, setFloatingPos] = useState({ x: Math.max(50, window.innerWidth - 460), y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -100,7 +101,7 @@ const Review = () => {
   // --- Auto-scroll to detection in document ---
   const scrollToDetection = useCallback((detId) => {
     const el = detectionRefs.current[detId];
-    if (el && viewerRef.current) {
+    if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, []);
@@ -130,6 +131,7 @@ const Review = () => {
       setExplanation(resp.data);
       if (resp.data.is_detection && resp.data.detection) {
         setActiveDetection(resp.data.detection);
+        setCustomLabelInput(resp.data.detection.custom_replacement || '');
       }
     } catch (err) {
       setExplanation({
@@ -148,6 +150,7 @@ const Review = () => {
   const handleDetectionClick = useCallback((det) => {
     setPdfSearchQuery(det.text);
     setActiveDetection(det);
+    setCustomLabelInput(det.custom_replacement || '');
     setExplanation({
       selected_text: det.text,
       is_detection: true,
@@ -159,16 +162,27 @@ const Review = () => {
     scrollToDetection(det.id);
   }, [scrollToDetection]);
 
-  const handleAction = useCallback((status) => {
+  const handleAction = useCallback((status, actionMode = null, customReplacement = null) => {
     if (!activeDetection) return;
 
     axios.patch(`http://localhost:8000/api/detection/${activeDetection.id}`, {
       status,
+      action_mode: actionMode || activeDetection.action_mode,
+      custom_replacement: customReplacement !== null ? customReplacement : activeDetection.custom_replacement,
       doc_id: activeDocId,
       detection: activeDetection,
     }).catch(() => {});
-    dispatch({ type: 'UPDATE_DETECTION_STATUS', payload: { docId: activeDocId, detectionId: activeDetection.id, status } });
-    setUndoToast({ text: `"${activeDetection.text}" → ${status}` });
+    dispatch({
+      type: 'UPDATE_DETECTION_STATUS',
+      payload: {
+        docId: activeDocId,
+        detectionId: activeDetection.id,
+        status,
+        actionMode: actionMode || activeDetection.action_mode,
+        customReplacement: customReplacement !== null ? customReplacement : activeDetection.custom_replacement,
+      }
+    });
+    setUndoToast({ text: `"${activeDetection.text}" → ${status === 'redacted' ? (actionMode === 'anonymize' ? 'Anonymized' : 'Redacted') : status}` });
     setTimeout(() => setUndoToast(null), 5000);
     setActiveDetection(null);
     setExplanation(null);
@@ -183,24 +197,36 @@ const Review = () => {
     setReviewIdx(idx + 1);
   }, [attentionItems, reviewIdx, handleDetectionClick]);
 
-  // Keyboard shortcuts — Problem 3: let Sam work fast
+  // Keyboard shortcuts — super fast review workflow
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      if (e.key === 'Enter' && activeDetection && (activeDetection.status === 'missed' || activeDetection.status === 'false_positive')) {
+      if ((e.key === 'r' || e.key === '1') && activeDetection) {
         e.preventDefault();
-        handleAction('redacted');
+        handleAction('redacted', 'redact');
         setTimeout(() => goToNextItem(), 100);
       }
-      if ((e.key === 'Backspace' || e.key === 'Delete') && activeDetection && (activeDetection.status === 'missed' || activeDetection.status === 'false_positive')) {
+      if ((e.key === 'a' || e.key === '2') && activeDetection) {
+        e.preventDefault();
+        handleAction('redacted', 'anonymize');
+        setTimeout(() => goToNextItem(), 100);
+      }
+      if ((e.key === 'd' || e.key === '3' || e.key === 'Backspace' || e.key === 'Delete') && activeDetection) {
         e.preventDefault();
         handleAction('dismissed');
         setTimeout(() => goToNextItem(), 100);
       }
-      if (e.key === 'Tab' && !e.shiftKey) {
+      if (e.key === 'Enter' && activeDetection && (activeDetection.status === 'missed' || activeDetection.status === 'false_positive')) {
         e.preventDefault();
-        goToNextItem();
+        handleAction('redacted', 'redact');
+        setTimeout(() => goToNextItem(), 100);
+      }
+      if (e.key === 'Tab' || e.key === 'n' || e.key === 'ArrowRight') {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          goToNextItem();
+        }
       }
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -554,21 +580,45 @@ const Review = () => {
                 </div>
               </div>
 
+              {/* Custom Anonymization Label Input */}
+              {explanation.is_detection && activeDetection && (
+                <div className="bg-white p-3 rounded-2xl border-2 border-black shadow-brutalist-xs space-y-1.5 mt-2">
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-black block">
+                    ✏️ Custom Synthetic Label / Rename (Optional):
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder={`e.g. [Client A] or [CEO]`}
+                      value={customLabelInput}
+                      onChange={(e) => setCustomLabelInput(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 text-xs border border-black rounded-xl font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <button
+                      onClick={() => handleAction('redacted', 'anonymize', customLabelInput.trim() || null)}
+                      className="bg-secondary text-black px-3 py-1.5 rounded-xl border border-black font-bold text-xs hover:shadow-retro shadow-brutalist-xs shrink-0"
+                    >
+                      Set & Anonymize
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Compact Actions: Redact vs Anonymize vs Dismiss */}
               {explanation.is_detection && activeDetection && (
                 <div className="space-y-2 pt-1">
                   {activeDetection.status === 'missed' || activeDetection.status === 'false_positive' ? (
                     <div className="space-y-2">
                       <div className="flex gap-2">
-                        <button onClick={() => handleAction('redacted', 'redact')} className="flex-1 bg-primary text-white py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
-                          <span className="material-symbols-outlined text-[16px]">ink_eraser</span> Redact (Blackout)
+                        <button onClick={() => handleAction('redacted', 'redact')} className="flex-1 bg-primary text-white py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm" title="Shortcut: R or 1">
+                          <span className="material-symbols-outlined text-[16px]">ink_eraser</span> Redact <span className="text-[10px] bg-black/30 px-1 rounded font-mono ml-0.5">[R]</span>
                         </button>
-                        <button onClick={() => handleAction('redacted', 'anonymize')} className="flex-1 bg-secondary text-black py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm">
-                          <span className="material-symbols-outlined text-[16px]">masks</span> Anonymize (Synthetic)
+                        <button onClick={() => handleAction('redacted', 'anonymize')} className="flex-1 bg-secondary text-black py-2.5 rounded-full font-bold text-xs hover:shadow-retro transition-all border-2 border-black flex items-center justify-center gap-1 shadow-brutalist-sm" title="Shortcut: A or 2">
+                          <span className="material-symbols-outlined text-[16px]">masks</span> Anonymize <span className="text-[10px] bg-white px-1 rounded font-mono border border-black ml-0.5">[A]</span>
                         </button>
                       </div>
-                      <button onClick={() => handleAction('dismissed')} className="w-full bg-white text-black py-2 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm">
-                        <span className="material-symbols-outlined text-[16px]">close</span> Dismiss (Keep Safe)
+                      <button onClick={() => handleAction('dismissed')} className="w-full bg-white text-black py-2 rounded-full font-bold text-xs hover:bg-gray-100 transition-all border-2 border-black flex items-center justify-center gap-1.5 shadow-brutalist-sm" title="Shortcut: D or 3">
+                        <span className="material-symbols-outlined text-[16px]">close</span> Dismiss (Keep Safe) <span className="text-[10px] bg-gray-200 px-1.5 rounded font-mono border border-black ml-1">[D]</span>
                       </button>
                     </div>
                   ) : activeDetection.status === 'redacted' ? (

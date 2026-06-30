@@ -34,10 +34,13 @@ class Detection(BaseModel):
     text:       str
     char_start: int
     char_end:   int
-    type:       PIIType
+    type:       str
     confidence: float               # 0.0 – 1.0
-    status:     DetectionStatus
+    status:     str
     reason:     str                 # human-readable explanation
+    action_mode: Optional[str] = None
+    custom_replacement: Optional[str] = None
+    source: Optional[str] = None
 
 class StructureNode(BaseModel):
     char_start: int
