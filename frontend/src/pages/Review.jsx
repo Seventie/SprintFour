@@ -60,7 +60,7 @@ const ReviewWorkspace = () => {
   };
 
   // Document Viewer Text Rendering Logic
-  const plainText = "Arjun Sharma sent an email to arjun.s@law.in regarding the contract. Call him at 9876543210 for details.";
+  const plainText = activeDoc?.content || "No document loaded.";
   
   const renderText = () => {
     let lastIndex = 0;
@@ -98,7 +98,7 @@ const ReviewWorkspace = () => {
         
         {/* SideNavBar */}
         <nav 
-          className={`bg-white text-black fixed left-0 top-0 h-full border-r border-gray-200 flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${sidebarOpen ? 'w-[280px]' : 'w-[80px]'}`}
+          className={`bg-white text-black border-r border-gray-200 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 shrink-0 ${sidebarOpen ? 'w-[280px]' : 'w-[80px]'}`}
           id="sidebar"
         >
           {/* Header */}
@@ -125,32 +125,42 @@ const ReviewWorkspace = () => {
             </button>
           </div>
           
-          {/* Tabs */}
-          <ul className="flex-1 py-4 overflow-y-auto space-y-1 px-2 mt-4">
-            <li>
-              <a href="#" className="interactive-hover flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg transition-colors duration-300 font-mono text-xs uppercase">
-                <span className="material-symbols-outlined shrink-0 text-[20px]">description</span>
-                {sidebarOpen && <span className="truncate">Documents</span>}
-              </a>
-            </li>
-            <li>
-              <a href="#" className="interactive-hover flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg transition-colors duration-300 font-mono text-xs uppercase">
-                <span className="material-symbols-outlined shrink-0 text-[20px]">analytics</span>
-                {sidebarOpen && <span className="truncate">Analytics</span>}
-              </a>
-            </li>
-            <li>
-              <a href="#" className="interactive-hover flex items-center gap-4 px-4 py-3 bg-black text-white rounded-lg font-mono text-xs uppercase transition-all duration-300">
-                <span className="material-symbols-outlined shrink-0 text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>security</span>
-                {sidebarOpen && <span className="truncate">Redactor</span>}
-              </a>
-            </li>
+          {/* File List */}
+          <div className="px-4 mt-6 mb-2">
+            <h3 className={`text-xs font-bold text-gray-400 tracking-widest uppercase font-mono ${sidebarOpen ? '' : 'text-center'}`}>
+              {sidebarOpen ? 'WORKSPACE FILES' : 'FILES'}
+            </h3>
+          </div>
+          <ul className="flex-1 py-2 overflow-y-auto space-y-1 px-2">
+            {documents.map((doc) => {
+              const docDets = detections[doc.doc_id] || [];
+              const missed = docDets.filter(d => d.status === 'missed').length;
+              
+              return (
+                <li key={doc.doc_id}>
+                  <button 
+                    onClick={() => dispatch({ type: 'SET_ACTIVE_DOC', payload: doc.doc_id })}
+                    className={`interactive-hover w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-300 text-left ${activeDocId === doc.doc_id ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    <span className="material-symbols-outlined shrink-0 text-[20px]">{doc.file_type === 'pdf' ? 'picture_as_pdf' : 'description'}</span>
+                    {sidebarOpen && (
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="truncate font-medium text-sm">{doc.filename}</div>
+                        <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${activeDocId === doc.doc_id ? (missed > 0 ? 'text-red-400' : 'text-green-400') : (missed > 0 ? 'text-red-500' : 'text-green-600')}`}>
+                          {missed > 0 ? `${missed} PENDING` : 'SECURED'}
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         
         {/* Document Viewer (Main Content Left) */}
         <main 
-          className={`flex-1 flex flex-col h-full bg-white transition-all duration-300 ${sidebarOpen ? 'ml-[280px]' : 'ml-[80px]'}`} 
+          className="flex-1 flex flex-col h-full bg-white transition-all duration-300 min-w-0" 
           id="main-content-left"
           onClick={() => activeDetection && setActiveDetection(null)}
         >

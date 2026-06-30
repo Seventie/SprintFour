@@ -3,18 +3,9 @@ import { createContext, useReducer, useContext } from 'react';
 const ReviewContext = createContext();
 
 const initialState = {
-  documents: [
-    // Mock data for demo
-    { doc_id: '1', filename: 'legal_contract.pdf', file_type: 'pdf', status: 'ready', char_count: 1500 }
-  ],
-  activeDocId: '1',
-  detections: {
-    '1': [
-      { id: 'd1', text: 'Arjun Sharma', char_start: 0, char_end: 12, type: 'NAME', confidence: 0.95, status: 'redacted', reason: 'Matches NAME pattern' },
-      { id: 'd2', text: 'arjun.s@law.in', char_start: 21, char_end: 35, type: 'EMAIL', confidence: 0.97, status: 'redacted', reason: 'Matches EMAIL format' },
-      { id: 'd3', text: '9876543210', char_start: 50, char_end: 60, type: 'PHONE', confidence: 0.38, status: 'missed', reason: 'Low conf PHONE' }
-    ]
-  },
+  documents: [],
+  activeDocId: null,
+  detections: {},
   corrections: {},
   flagged: {},
   history: [],
@@ -23,6 +14,14 @@ const initialState = {
 
 function reviewReducer(state, action) {
   switch (action.type) {
+    case 'LOAD_SESSION':
+      return {
+        ...state,
+        documents: action.payload.documents,
+        detections: action.payload.detections,
+        activeDocId: action.payload.documents.length > 0 ? action.payload.documents[0].doc_id : null,
+        history: []
+      };
     case 'SET_ACTIVE_DOC':
       return { ...state, activeDocId: action.payload };
     case 'TOGGLE_SIDEBAR':
