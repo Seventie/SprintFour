@@ -34,6 +34,9 @@ Conseal natively supports multi-format document ingestion and processing:
 
 ## Core Architectural Features & UI/UX Innovations
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/430731c2-09a9-4d98-be5e-1beab930351f" />
+
+
 ### 1. Dual-Layer AI Detection Engine with spaCy Token Precision
 - **Transformer NLP Layer**: Integrated spaCy transformer model (`en_core_web_trf`) and Microsoft Presidio for exact word-boundary entity extraction (PERSON, EMAIL, PHONE, SSN, CREDIT_CARD, MEDICAL_LICENSE, etc.).
 - **Heuristic & Regex Layer**: High-precision fallback matching rules with strict word-boundary alignment so tokens never get cut in half.
