@@ -4,15 +4,12 @@ from docx import Document
 import uuid
 from typing import List, Optional
 from io import BytesIO
-import csv
-from presidio_analyzer import AnalyzerEngine
 import state
+import csv
 from services.heuristic import run_heuristic_detection, merge_detections, align_detection_boundaries
+from services.gliner_service import detect_pii_gliner
 
 router = APIRouter()
-
-# Initialize the Presidio analyzer engine globally
-analyzer = AnalyzerEngine()
 
 
 # --- Confidence-based status assignment ---
@@ -75,57 +72,17 @@ def extract_text_from_csv(file_bytes):
     return "\n".join(lines)
 
 
-def extract_text_from_excel(file_bytes):
-    try:
-        import openpyxl
-        wb = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True)
-        lines = []
-        for sheet in wb.sheetnames:
-            ws = wb[sheet]
-            lines.append(f"--- Sheet: {sheet} ---")
-            for row in ws.iter_rows(values_only=True):
-                row_vals = [str(cell).strip() for cell in row if cell is not None and str(cell).strip() != ""]
-                if row_vals:
-                    lines.append(" | ".join(row_vals))
-        return "\n".join(lines)
-    except Exception as e:
-        print("Excel extraction error:", e)
-        return file_bytes.decode('utf-8', errors='ignore')
-
-
 def extract_text_from_txt(file_bytes):
     return file_bytes.decode('utf-8', errors='ignore')
 
 
-def detect_pii_presidio(text: str) -> List[dict]:
-    """Layer 1: Presidio NLP-based detection."""
-    detections = []
-    results = analyzer.analyze(text=text, language='en')
-
-    for result in results:
-        extracted = text[result.start:result.end]
-        conf = round(result.score, 2)
-        status = assign_status(conf)
-        reason = get_reason(result.entity_type, conf, extracted)
-
-        detections.append({
-            "id": f"det_{uuid.uuid4().hex[:8]}",
-            "text": extracted,
-            "char_start": result.start,
-            "char_end": result.end,
-            "type": result.entity_type,
-            "confidence": conf,
-            "status": status,
-            "reason": reason,
-            "source": "model",
-        })
-
-    return sorted(detections, key=lambda x: x['char_start'])
-
-
 @router.post("/api/upload")
-async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional[str] = Form(None)):
-    print(f"--- UPLOAD CALLED --- ({len(files)} files)")
+async def upload_files(
+    files: List[UploadFile] = File(...),
+    file_modes: Optional[str] = Form(None),
+    policy: Optional[str] = Form("mixed_general")
+):
+    print(f"--- UPLOAD CALLED --- ({len(files)} files, policy={policy})")
     modes_dict = {}
     if file_modes:
         try:
@@ -145,15 +102,41 @@ async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional
         text = ""
         file_type = "txt"
 
+        metadata = {}
+
         if filename.endswith(".pdf"):
             text = extract_text_from_pdf(contents)
             file_type = "pdf"
+            try:
+                pdf_doc = fitz.open(stream=contents, filetype="pdf")
+                md = pdf_doc.metadata or {}
+                metadata = {
+                    "author": md.get("author", ""),
+                    "creator": md.get("creator", ""),
+                    "title": md.get("title", ""),
+                    "created": md.get("creationDate", ""),
+                    "modified": md.get("modDate", ""),
+                    "tool": md.get("producer", ""),
+                }
+                pdf_doc.close()
+            except Exception as e:
+                print(f"PDF metadata extraction error: {e}")
         elif filename.endswith(".docx"):
             text = extract_text_from_docx(contents)
             file_type = "docx"
-        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
-            text = extract_text_from_excel(contents)
-            file_type = "xlsx"
+            try:
+                docx_doc = Document(BytesIO(contents))
+                cp = docx_doc.core_properties
+                metadata = {
+                    "author": cp.author or "",
+                    "creator": cp.last_modified_by or "",
+                    "title": cp.title or "",
+                    "created": str(cp.created) if cp.created else "",
+                    "modified": str(cp.modified) if cp.modified else "",
+                    "tool": "",
+                }
+            except Exception as e:
+                print(f"DOCX metadata extraction error: {e}")
         elif filename.endswith(".csv"):
             text = extract_text_from_csv(contents)
             file_type = "csv"
@@ -166,10 +149,10 @@ async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional
 
         mode = modes_dict.get(str(idx)) or modes_dict.get(file.filename) or "redact"
 
-        # --- Dual-layer detection ---
-        model_dets = detect_pii_presidio(text)
-        heuristic_dets = run_heuristic_detection(text)
+        # --- Core NLP Detection (GLiNER2-PII) totally replacing Presidio ---
+        model_dets = detect_pii_gliner(text, policy_name=policy or "mixed_general")
 
+        heuristic_dets = run_heuristic_detection(text)
         merged_dets = merge_detections(model_dets, heuristic_dets)
         merged_dets = align_detection_boundaries(text, merged_dets)
 
@@ -186,6 +169,7 @@ async def upload_files(files: List[UploadFile] = File(...), file_modes: Optional
             "char_count": len(text),
             "content": text,
             "default_action_mode": mode,
+            "metadata": metadata,
         }
 
         state.documents[doc_id] = doc_record

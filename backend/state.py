@@ -28,8 +28,9 @@ def save_state():
         
         for doc_id, raw_bytes in original_files.items():
             file_path = os.path.join(FILES_DIR, f"{doc_id}.bin")
-            with open(file_path, "wb") as f:
-                f.write(raw_bytes)
+            if not os.path.exists(file_path):
+                with open(file_path, "wb") as f:
+                    f.write(raw_bytes)
     except Exception as e:
         print(f"[State] Warning saving state: {e}")
 

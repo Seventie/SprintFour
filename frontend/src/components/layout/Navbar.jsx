@@ -13,6 +13,7 @@ const Navbar = () => {
         </Link>
         <nav className="flex items-center gap-6 text-xs md:text-sm font-bold uppercase tracking-wider">
           <Link to="/" className="text-gray-800 dark:text-gray-200 hover:text-primary transition-colors">Home</Link>
+          <Link to="/architecture" className="text-gray-800 dark:text-gray-200 hover:text-primary transition-colors">How It Works</Link>
           <Link to="/upload" className="text-gray-800 dark:text-gray-200 hover:text-primary transition-colors">Workspace</Link>
           <Link to="/upload" className="bg-secondary text-black px-5 py-2 rounded-full border-2 border-black font-bold shadow-retro hover:translate-y-[-2px] hover:shadow-retro-hover transition-all text-xs">
             Start Redacting

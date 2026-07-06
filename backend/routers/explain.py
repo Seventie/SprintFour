@@ -75,22 +75,17 @@ async def explain_selection(req: ExplainRequest):
     context = doc_text[ctx_start:ctx_end]
 
     if overlapping_detection:
-        # Explain WHY it was flagged
-        result = await get_explanation(
-            selected_text=req.selected_text,
-            context=context,
-            is_redacted=True,
-            detection_type=overlapping_detection.get("type"),
-            confidence=overlapping_detection.get("confidence"),
-            reason=overlapping_detection.get("reason"),
-        )
+        # Skip LLM — build response directly from cached detection metadata
+        det = overlapping_detection
+        conf = det.get("confidence", 0)
+        risk = "high" if conf >= 0.85 else "medium" if conf >= 0.5 else "low"
         return ExplainResponse(
             selected_text=req.selected_text,
             is_detection=True,
-            detection=overlapping_detection,
-            explanation=result["explanation"],
-            risk_level=result["risk_level"],
-            source=result.get("source", "rules"),
+            detection=det,
+            explanation=det.get("reason", f"Detected as {det.get('type', 'UNKNOWN')} with {conf:.0%} confidence."),
+            risk_level=risk,
+            source="cached",
         )
     else:
         # Explain WHY it was NOT flagged

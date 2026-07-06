@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReview } from '../context/ReviewContext';
 import HighlightSpan from '../components/review/HighlightSpan';
-import InteractivePdfViewer from '../components/review/InteractivePdfViewer';
+import LivePreview from '../components/review/LivePreview';
 import axios from 'axios';
 
 const Review = () => {
@@ -12,6 +12,7 @@ const Review = () => {
   const [explanation, setExplanation] = useState(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkThreshold, setBulkThreshold] = useState(85);
   const [undoToast, setUndoToast] = useState(null);
   const [reviewIdx, setReviewIdx] = useState(0);
   const [viewMode, setViewMode] = useState('parsed');
@@ -197,6 +198,36 @@ const Review = () => {
     setReviewIdx(idx + 1);
   }, [attentionItems, reviewIdx, handleDetectionClick]);
 
+  // Navigate to previous unreviewed item
+  const goToPrevItem = useCallback(() => {
+    if (attentionItems.length === 0) return;
+    const prevIdx = (reviewIdx - 2 + attentionItems.length) % attentionItems.length;
+    const item = attentionItems[prevIdx < 0 ? attentionItems.length - 1 : prevIdx];
+    handleDetectionClick(item);
+    setReviewIdx(prevIdx < 0 ? attentionItems.length : prevIdx + 1);
+  }, [attentionItems, reviewIdx, handleDetectionClick]);
+
+  // Navigate files
+  const goToNextFile = useCallback(() => {
+    if (documents.length <= 1) return;
+    const currentIndex = documents.findIndex(d => d.doc_id === activeDocId);
+    const nextIndex = (currentIndex + 1) % documents.length;
+    dispatch({ type: 'SET_ACTIVE_DOC', payload: documents[nextIndex].doc_id });
+    setReviewIdx(0);
+    setActiveDetection(null);
+    setExplanation(null);
+  }, [documents, activeDocId, dispatch]);
+
+  const goToPrevFile = useCallback(() => {
+    if (documents.length <= 1) return;
+    const currentIndex = documents.findIndex(d => d.doc_id === activeDocId);
+    const prevIndex = (currentIndex - 1 + documents.length) % documents.length;
+    dispatch({ type: 'SET_ACTIVE_DOC', payload: documents[prevIndex].doc_id });
+    setReviewIdx(0);
+    setActiveDetection(null);
+    setExplanation(null);
+  }, [documents, activeDocId, dispatch]);
+
   // Keyboard shortcuts — super fast review workflow
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -222,20 +253,62 @@ const Review = () => {
         handleAction('redacted', 'redact');
         setTimeout(() => goToNextItem(), 100);
       }
-      if (e.key === 'Tab' || e.key === 'n' || e.key === 'ArrowRight') {
+      if (e.key === 'Tab') {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
           e.preventDefault();
-          goToNextItem();
+          if (e.shiftKey) goToPrevItem();
+          else goToNextItem();
         }
       }
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+
+      // Movement between items in list
+      if (!e.shiftKey && (e.key === 'ArrowDown' || e.key === 'n')) {
+        e.preventDefault();
+        goToNextItem();
+      }
+      if (!e.shiftKey && (e.key === 'ArrowUp' || e.key === 'p')) {
+        e.preventDefault();
+        goToPrevItem();
+      }
+
+      // Movement between files
+      if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'n')) {
+        e.preventDefault();
+        goToNextFile();
+      }
+      if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'p')) {
+        e.preventDefault();
+        goToPrevFile();
+      }
+
+      if (e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleGlobalBulkAccept();
+        } else {
+          e.preventDefault();
+          handleBulkAccept(0);
+        }
+      }
+
+      if (e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleGlobalBulkReject();
+        } else {
+          e.preventDefault();
+          handleBulkUpdateAll('dismissed');
+        }
+      }
+
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDetection, goToNextItem, handleAction, handleUndo]);
+  }, [activeDetection, goToNextItem, goToPrevItem, goToNextFile, goToPrevFile, handleAction, handleUndo, activeDocId]);
 
   const handleBulkAccept = (threshold) => {
     dispatch({ type: 'BULK_ACCEPT', payload: { docId: activeDocId, threshold } });
@@ -245,10 +318,14 @@ const Review = () => {
   const handleBulkUpdateAll = async (status) => {
     if (!activeDocId) return;
     dispatch({ type: 'BULK_UPDATE_ALL', payload: { docId: activeDocId, status } });
-    const pending = (detections[activeDocId] || []).filter(d => d.status === 'missed' || d.status === 'false_positive');
-    for (const d of pending) {
-      axios.patch(`http://localhost:8000/api/detection/${d.id}`, { status }).catch(() => {});
-    }
+  };
+
+  const handleGlobalBulkAccept = () => {
+    dispatch({ type: 'BULK_ACCEPT_GLOBAL', payload: { threshold: 0 } });
+  };
+
+  const handleGlobalBulkReject = () => {
+    dispatch({ type: 'BULK_REJECT_GLOBAL' });
   };
 
   const handleExport = () => {
@@ -342,7 +419,7 @@ const Review = () => {
         elements.push(
           <span
             key={`${keyPrefix}-w-${i}`}
-            className="word-span"
+            className={`word-span ${pdfSearchQuery && part.toLowerCase() === pdfSearchQuery.toLowerCase() ? 'bg-yellow-300 text-black px-1 rounded border border-black shadow-[1px_1px_0px_0px_#000] font-bold' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               handleWordClick(part, wordStart, wordEnd);
@@ -418,7 +495,7 @@ const Review = () => {
           <div className="flex items-center gap-3">
             <span className="font-display font-bold text-base text-black">{activeDoc?.filename}</span>
             <span className="text-xs font-bold text-black bg-white px-2.5 py-0.5 rounded-full border border-black uppercase">{activeDoc?.file_type}</span>
-            {activeDoc?.file_type === 'pdf' && (
+            {(
               <div className="flex bg-white rounded-xl border-2 border-black p-0.5 shadow-brutalist-xs ml-2">
                 <button
                   onClick={() => setViewMode('parsed')}
@@ -430,7 +507,7 @@ const Review = () => {
                   onClick={() => setViewMode('pdf')}
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'pdf' ? 'bg-secondary text-black shadow-sm' : 'text-black hover:bg-gray-100'}`}
                 >
-                  PDF View
+                  Document View
                 </button>
                 <button
                   onClick={() => setViewMode('split')}
@@ -454,15 +531,25 @@ const Review = () => {
 
         {/* Document Canvas */}
         <div ref={viewerRef} className="flex-1 overflow-auto p-6 bg-aura-cream dark:bg-background-dark flex justify-center items-start pt-6" onClick={() => { setActiveDetection(null); setExplanation(null); }}>
-          {viewMode === 'pdf' && activeDoc?.file_type === 'pdf' ? (
+          {viewMode === 'pdf' ? (
             <div className="w-full h-full bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden">
-              <InteractivePdfViewer
-                fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
-                searchQuery={pdfSearchQuery}
-                detections={activeDetections}
-              />
+              {activeDoc?.file_type === 'pdf' ? (
+                <InteractivePdfViewer
+                  fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
+                  searchQuery={pdfSearchQuery}
+                  detections={activeDetections}
+                />
+              ) : (
+                <LivePreview
+                  activeDoc={activeDoc}
+                  detections={activeDetections}
+                  exportMode={activeDoc?.default_action_mode || 'redact'}
+                  searchQuery={pdfSearchQuery}
+                  onSearchQueryChange={setPdfSearchQuery}
+                />
+              )}
             </div>
-          ) : viewMode === 'split' && activeDoc?.file_type === 'pdf' ? (
+          ) : viewMode === 'split' ? (
             <div className="w-full h-full grid grid-cols-2 gap-4">
               <div className="bg-white dark:bg-card-dark border-2 border-black shadow-brutalist rounded-3xl p-8 relative overflow-y-auto doc-paper" onMouseUp={handleTextSelectionSync}>
                 <div className="absolute top-4 right-4 border-2 border-black bg-card-purple text-black font-bold text-[9px] px-2.5 py-0.5 uppercase rounded-full tracking-widest">Interactive Parsed</div>
@@ -471,10 +558,12 @@ const Review = () => {
                 </div>
               </div>
               <div className="bg-white border-2 border-black shadow-brutalist rounded-3xl overflow-hidden flex flex-col">
-                <InteractivePdfViewer
-                  fileUrl={`http://localhost:8000/api/document/${activeDoc.doc_id}/raw`}
-                  searchQuery={pdfSearchQuery}
+                <LivePreview
+                  activeDoc={activeDoc}
                   detections={activeDetections}
+                  exportMode="highlight"
+                  searchQuery={pdfSearchQuery}
+                  onSearchQueryChange={setPdfSearchQuery}
                 />
               </div>
             </div>
@@ -732,12 +821,36 @@ const Review = () => {
                     </div>
                   )}
 
-                  <button
-                    onClick={() => setShowBulkModal(true)}
-                    className="w-full mt-2 bg-primary text-white py-2.5 rounded-full font-bold text-xs uppercase tracking-wider border-2 border-black shadow-retro hover:shadow-retro-hover transition-all"
-                  >
-                    Bulk Accept All Above 85%
-                  </button>
+                  <div className="flex flex-col gap-2 mt-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setShowBulkModal(true)}
+                        className="bg-primary text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider border-2 border-black shadow-retro hover:shadow-retro-hover transition-all"
+                      >
+                        Accept (File)
+                      </button>
+                      <button
+                        onClick={() => handleBulkUpdateAll('dismissed')}
+                        className="bg-red-500 text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider border-2 border-black shadow-retro hover:shadow-retro-hover transition-all"
+                      >
+                        Reject (File)
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleGlobalBulkAccept}
+                        className="bg-black text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider border-2 border-black shadow-retro hover:shadow-retro-hover transition-all"
+                      >
+                        Accept (All)
+                      </button>
+                      <button
+                        onClick={handleGlobalBulkReject}
+                        className="bg-black text-white py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider border-2 border-black shadow-retro hover:shadow-retro-hover transition-all"
+                      >
+                        Reject (All)
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-white border-2 border-black rounded-3xl p-6 text-center shadow-brutalist-sm">
@@ -762,15 +875,31 @@ const Review = () => {
           <div className="bg-white rounded-3xl p-6 border-2 border-black w-80 shadow-retro animate-scale-in">
             <h3 className="text-lg font-display font-bold text-black mb-1">Bulk Accept</h3>
             <p className="text-xs font-bold text-gray-600 mb-5">Accept pending items by confidence threshold:</p>
-            <div className="space-y-2">
-              {[0.85, 0.70, 0.50].map(t => (
-                <button key={t} onClick={() => handleBulkAccept(t)} className="w-full text-left px-4 py-3 bg-card-yellow hover:bg-secondary rounded-2xl text-xs font-bold transition-all border-2 border-black flex justify-between items-center shadow-brutalist-xs">
-                  <span>≥ {(t * 100).toFixed(0)}% Confidence</span>
-                  <span className="font-mono bg-white px-2 py-0.5 rounded-full border border-black">{activeDetections.filter(d => d.status === 'missed' && d.confidence >= t).length}</span>
-                </button>
-              ))}
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between items-center text-xs font-bold">
+                <span>Confidence ≥ {bulkThreshold}%</span>
+                <span className="bg-black text-white px-2 py-0.5 rounded-full">
+                  {activeDetections.filter(d => d.status === 'missed' && d.confidence >= bulkThreshold / 100).length} items
+                </span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                step="5"
+                value={bulkThreshold}
+                onChange={(e) => setBulkThreshold(parseInt(e.target.value))}
+                className="w-full accent-primary cursor-pointer"
+              />
             </div>
-            <button onClick={() => setShowBulkModal(false)} className="w-full mt-4 py-2 text-xs font-bold text-gray-600 hover:text-black">Cancel</button>
+            
+            <button 
+              onClick={() => handleBulkAccept(bulkThreshold / 100)} 
+              className="w-full text-center px-4 py-3 bg-primary text-white hover:bg-black rounded-2xl text-xs font-bold transition-all border-2 border-black shadow-brutalist-xs"
+            >
+              Confirm Accept
+            </button>
+            <button onClick={() => setShowBulkModal(false)} className="w-full mt-2 py-2 text-xs font-bold text-gray-600 hover:text-black">Cancel</button>
           </div>
         </div>
       )}

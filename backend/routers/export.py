@@ -7,6 +7,7 @@ from docx import Document
 from io import BytesIO
 import state
 import json
+import zipfile
 
 router = APIRouter()
 
@@ -59,7 +60,17 @@ ANONYMIZED_REPLACEMENTS = {
 def get_replacement_text(det: Detection, global_mode: str) -> str:
     if getattr(det, "custom_replacement", None) and det.custom_replacement.strip():
         return det.custom_replacement.strip()
-    mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
+    
+    if getattr(det, "action_mode", None) == "highlight_red":
+        return det.text
+        
+    if global_mode == "highlight":
+        mode = "highlight"
+    else:
+        mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
+
+    if mode == "highlight":
+        return det.text
     if mode == "anonymize":
         if det.type in ANONYMIZED_REPLACEMENTS:
             return ANONYMIZED_REPLACEMENTS[det.type]
@@ -143,14 +154,41 @@ def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str)
             page.delete_link(link)
         for det in detections:
             text_instances = page.search_for(det.text)
-            mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
+            
+            det_mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
+            
+            if getattr(det, "action_mode", None) == "highlight_red":
+                mode = "highlight_red"
+            elif global_mode == "highlight":
+                mode = "highlight"
+            else:
+                mode = det_mode
+                
             replacement = get_replacement_text(det, global_mode)
             for inst in text_instances:
-                if mode == "anonymize":
+                if mode == "highlight":
+                    annot = page.add_highlight_annot(inst)
+                    if det_mode == "anonymize":
+                        annot.set_colors(stroke=(0.5, 0.9, 0.5)) # Light green
+                    else:
+                        annot.set_colors(stroke=(1, 0.9, 0.4)) # Light yellow
+                    annot.set_opacity(0.4)
+                    if getattr(det, "reason", None):
+                        annot.set_info(content=det.reason)
+                    annot.update()
+                elif mode == "highlight_red":
+                    annot = page.add_highlight_annot(inst)
+                    annot.set_colors(stroke=(1, 0.4, 0.4)) # Soft red
+                    annot.set_opacity(0.4)
+                    if getattr(det, "reason", None):
+                        annot.set_info(content=det.reason)
+                    annot.update()
+                elif mode == "anonymize":
                     page.add_redact_annot(inst, text=replacement, fill=(0.95, 0.95, 0.95), text_color=(0, 0, 0), fontsize=9)
                 else:
                     page.add_redact_annot(inst, fill=(0, 0, 0))
-        page.apply_redactions()
+        if global_mode != "highlight":
+            page.apply_redactions()
     stripped = strip_pdf_metadata(doc)
     stripped.extend(link_items)
     out_pdf = doc.write()
@@ -158,45 +196,98 @@ def redact_pdf(file_bytes: bytes, detections: List[Detection], global_mode: str)
     return out_pdf, stripped
 
 
+def apply_highlight_to_run(para, run, det_text, color_type="yellow", reason=None):
+    import copy
+    from docx.oxml.shared import OxmlElement
+    from docx.oxml.ns import qn
+    
+    if det_text not in run.text: return
+    parts = run.text.split(det_text)
+    
+    r_xml = run._r
+    parent = r_xml.getparent()
+    idx = parent.index(r_xml)
+    
+    run.text = parts[0]
+    current_idx = idx + 1
+    
+    color_map = {
+        "yellow": "FFF3B0",
+        "green": "C8E6C9",
+        "red": "FFCDD2"
+    }
+    hex_color = color_map.get(color_type, "FFF3B0")
+    
+    for i in range(1, len(parts)):
+        new_run_match = para.add_run(det_text)
+        rPr = r_xml.get_or_add_rPr()
+        new_rPr = copy.deepcopy(rPr)
+        
+        shd = new_rPr.find(qn('w:shd'))
+        if shd is None:
+            shd = OxmlElement('w:shd')
+            new_rPr.append(shd)
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), hex_color)
+        
+        new_run_match._r.replace(new_run_match._r.get_or_add_rPr(), new_rPr)
+        
+        if reason:
+            hyperlink = OxmlElement('w:hyperlink')
+            hyperlink.set(qn('w:anchor'), '_')
+            hyperlink.set(qn('w:tooltip'), reason)
+            hyperlink.append(new_run_match._r)
+            parent.insert(current_idx, hyperlink)
+        else:
+            parent.insert(current_idx, new_run_match._r)
+            
+        current_idx += 1
+        
+        new_run_after = para.add_run(parts[i])
+        new_rPr_after = copy.deepcopy(rPr)
+        new_run_after._r.replace(new_run_after._r.get_or_add_rPr(), new_rPr_after)
+        parent.insert(current_idx, new_run_after._r)
+        current_idx += 1
+
+def process_docx_detections(para, detections, global_mode):
+    for det in detections:
+        if det.text in para.text:
+            rep = get_replacement_text(det, global_mode)
+            runs = list(para.runs)
+            for run in runs:
+                if det.text in run.text:
+                    det_mode = det.action_mode if getattr(det, "action_mode", None) in ("redact", "anonymize") else global_mode
+                    mode = "highlight_red" if getattr(det, "action_mode", None) == "highlight_red" else global_mode
+                    
+                    if mode == "highlight":
+                        color = "green" if det_mode == "anonymize" else "yellow"
+                        apply_highlight_to_run(para, run, det.text, color, getattr(det, "reason", None))
+                    elif mode == "highlight_red":
+                        apply_highlight_to_run(para, run, det.text, "red", getattr(det, "reason", None))
+                    else:
+                        run.text = run.text.replace(det.text, rep)
+
 def redact_docx(file_bytes: bytes, detections: List[Detection], global_mode: str) -> bytes:
     doc = Document(BytesIO(file_bytes))
     stripped = strip_docx_metadata(doc)
+    
     for para in doc.paragraphs:
-        for det in detections:
-            if det.text in para.text:
-                rep = get_replacement_text(det, global_mode)
-                for run in para.runs:
-                    if det.text in run.text:
-                        run.text = run.text.replace(det.text, rep)
+        process_docx_detections(para, detections, global_mode)
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
-                for det in detections:
-                    if det.text in cell.text:
-                        rep = get_replacement_text(det, global_mode)
-                        for para in cell.paragraphs:
-                            for run in para.runs:
-                                if det.text in run.text:
-                                    run.text = run.text.replace(det.text, rep)
+                for para in cell.paragraphs:
+                    process_docx_detections(para, detections, global_mode)
     for section in doc.sections:
         for header in [section.header, section.first_page_header, section.even_page_header]:
             if header and header.is_linked_to_previous is False:
                 for para in header.paragraphs:
-                    for det in detections:
-                        if det.text in para.text:
-                            rep = get_replacement_text(det, global_mode)
-                            for run in para.runs:
-                                if det.text in run.text:
-                                    run.text = run.text.replace(det.text, rep)
+                    process_docx_detections(para, detections, global_mode)
         for footer in [section.footer, section.first_page_footer, section.even_page_footer]:
             if footer and footer.is_linked_to_previous is False:
                 for para in footer.paragraphs:
-                    for det in detections:
-                        if det.text in para.text:
-                            rep = get_replacement_text(det, global_mode)
-                            for run in para.runs:
-                                if det.text in run.text:
-                                    run.text = run.text.replace(det.text, rep)
+                    process_docx_detections(para, detections, global_mode)
     out_io = BytesIO()
     doc.save(out_io)
     return out_io.getvalue(), stripped
@@ -220,42 +311,6 @@ def redact_csv(file_bytes: bytes, detections: List[Detection], global_mode: str)
     return text.encode('utf-8'), []
 
 
-def redact_excel(file_bytes: bytes, detections: List[Detection], global_mode: str):
-    try:
-        import openpyxl
-        wb = openpyxl.load_workbook(BytesIO(file_bytes))
-        stripped_meta = [
-            "Author Tag: 'Original Creator' ➔ [Purged]",
-            "Last Modified By: 'System User' ➔ [Purged]",
-            "Workbook Creator Application ➔ 'Conseal Redaction Engine'"
-        ]
-        if hasattr(wb, 'properties'):
-            wb.properties.creator = 'Conseal Redaction Engine'
-            wb.properties.lastModifiedBy = ''
-            wb.properties.title = 'Redacted Spreadsheet'
-            wb.properties.subject = ''
-            wb.properties.keywords = ''
-            wb.properties.category = ''
-            wb.properties.company = ''
-        for sheet in wb.sheetnames:
-            ws = wb[sheet]
-            for row in ws.iter_rows():
-                for cell in row:
-                    if cell.value and isinstance(cell.value, str):
-                        val = cell.value
-                        for det in sorted(detections, key=lambda x: len(x.text), reverse=True):
-                            if det.text in val:
-                                rep = get_replacement_text(det, global_mode)
-                                val = val.replace(det.text, rep)
-                        cell.value = val
-        out = BytesIO()
-        wb.save(out)
-        return out.getvalue(), stripped_meta
-    except Exception as e:
-        print("Excel export error:", e)
-        return redact_csv(file_bytes, detections, global_mode)
-
-
 @router.post("/api/export")
 async def export_document(req: ExportRequest):
     if req.doc_id not in state.original_files:
@@ -273,9 +328,6 @@ async def export_document(req: ExportRequest):
         elif filename.endswith(".docx"):
             output_bytes, stripped_meta = redact_docx(original_bytes, redacted_items, global_mode)
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
-            output_bytes, stripped_meta = redact_excel(original_bytes, redacted_items, global_mode)
-            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         elif filename.endswith(".csv"):
             output_bytes, stripped_meta = redact_csv(original_bytes, redacted_items, global_mode)
             media_type = "text/csv"
@@ -322,3 +374,72 @@ async def export_document(req: ExportRequest):
             "X-Stripped-Metadata": json.dumps(stripped_meta),
         }
     )
+
+class BulkExportRequest(BaseModel):
+    documents: List[ExportRequest]
+
+@router.post("/api/export/bulk")
+async def export_bulk(req: BulkExportRequest):
+    if not req.documents:
+        raise HTTPException(status_code=400, detail="No documents provided")
+    
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for doc_req in req.documents:
+            try:
+                # Call the logic of export_document, but we need to do it without Response object
+                if doc_req.doc_id not in state.original_files:
+                    state.load_state()
+                
+                filename = doc_req.filename.lower()
+                redacted_items = [d for d in doc_req.detections if d.status == 'redacted' or d.status == 'added']
+                global_mode = doc_req.export_mode or "redact"
+                prefix = "anonymized_" if global_mode == "anonymize" else "redacted_"
+                
+                output_bytes = b""
+                if doc_req.doc_id in state.original_files:
+                    original_bytes = state.original_files[doc_req.doc_id]
+                    if filename.endswith(".pdf"):
+                        output_bytes, _ = redact_pdf(original_bytes, redacted_items, global_mode)
+                    elif filename.endswith(".docx"):
+                        output_bytes, _ = redact_docx(original_bytes, redacted_items, global_mode)
+                    elif filename.endswith(".csv"):
+                        output_bytes, _ = redact_csv(original_bytes, redacted_items, global_mode)
+                    else:
+                        output_bytes, _ = redact_txt(original_bytes, redacted_items, global_mode)
+                else:
+                    text_content = doc_req.content or state.documents.get(doc_req.doc_id, {}).get("content", "")
+                    sorted_dets = sorted(redacted_items, key=lambda x: x.char_start, reverse=True)
+                    for det in sorted_dets:
+                        rep = get_replacement_text(det, global_mode)
+                        text_content = text_content[:det.char_start] + rep + text_content[det.char_end:]
+                    
+                    if filename.endswith(".pdf"):
+                        doc = fitz.open()
+                        page = doc.new_page()
+                        page.insert_text((50, 50), text_content, fontsize=11)
+                        output_bytes = doc.write()
+                        doc.close()
+                    elif filename.endswith(".docx"):
+                        doc = Document()
+                        for line in text_content.split('\n'):
+                            doc.add_paragraph(line)
+                        out_io = BytesIO()
+                        doc.save(out_io)
+                        output_bytes = out_io.getvalue()
+                    else:
+                        output_bytes = text_content.encode('utf-8')
+                
+                if output_bytes:
+                    zf.writestr(f"{prefix}{doc_req.filename}", output_bytes)
+            except Exception as e:
+                print(f"Error zipping {doc_req.filename}: {e}")
+                
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=bulk_export.zip"
+        }
+    )
+

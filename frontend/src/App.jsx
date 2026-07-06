@@ -3,6 +3,7 @@ import Landing from './pages/Landing';
 import Upload from './pages/Upload';
 import Review from './pages/Review';
 import Export from './pages/Export';
+import Architecture from './pages/Architecture';
 import { ReviewProvider } from './context/ReviewContext';
 import BackgroundAtmosphere from './components/layout/BackgroundAtmosphere';
 
@@ -16,6 +17,7 @@ function App() {
           <Route path="/upload" element={<Upload />} />
           <Route path="/review" element={<Review />} />
           <Route path="/export" element={<Export />} />
+          <Route path="/architecture" element={<Architecture />} />
         </Routes>
       </Router>
     </ReviewProvider>

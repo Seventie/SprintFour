@@ -178,6 +178,65 @@ def explain_with_rules(
         }
 
 
+LOCAL_LLM_URL = os.getenv("LOCAL_LLM_URL", "http://localhost:11434/api/generate")
+LOCAL_LLM_MODEL = os.getenv("LOCAL_LLM_MODEL", "qwen2.5:0.5b")
+
+
+async def explain_with_local_llm(
+    selected_text: str,
+    context: str,
+    is_redacted: bool,
+    detection_type: Optional[str] = None,
+    confidence: Optional[float] = None,
+) -> Optional[Dict]:
+    """Call Local LLM (e.g. Ollama running qwen2.5:0.5b or tinydolphin) to explain why text is/isn't PII."""
+    status_desc = "was automatically flagged and REDACTED" if is_redacted else "was NOT flagged as PII"
+    type_desc = f" as {detection_type} (confidence: {confidence:.0%})" if detection_type else ""
+
+    prompt = f"""You are a PII (Personally Identifiable Information) expert auditing a document redaction tool. A skeptical user has clicked on a piece of text and wants to understand the tool's decision.
+
+DOCUMENT CONTEXT (surrounding text):
+---
+{context[:1500]}
+---
+
+SELECTED TEXT: "{selected_text}"
+TOOL DECISION: This text {status_desc}{type_desc}.
+
+Provide a clear, honest, 2-3 sentence explanation that:
+1. States what the text is (name, number, legal term, common word, etc.)
+2. Explains WHY it {("is" if is_redacted else "is NOT")} personally identifiable information
+3. Acknowledges any uncertainty or edge cases
+
+Respond ONLY as valid JSON: {{"explanation": "your explanation", "risk_level": "high|medium|low|none"}}"""
+
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            resp = await client.post(
+                LOCAL_LLM_URL,
+                json={
+                    "model": LOCAL_LLM_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data.get("response", "")
+                parsed = json.loads(content)
+                if isinstance(parsed.get("explanation"), dict):
+                    exp_dict = parsed["explanation"]
+                    parsed["explanation"] = exp_dict.get("reason") or exp_dict.get("explanation") or str(exp_dict)
+                    if "risk_level" not in parsed and "risk_level" in exp_dict:
+                        parsed["risk_level"] = exp_dict["risk_level"]
+                return parsed
+    except Exception as e:
+        # Silently fall through if local LLM is offline or model not found
+        pass
+    return None
+
+
 async def get_explanation(
     selected_text: str,
     context: str,
@@ -187,10 +246,18 @@ async def get_explanation(
     reason: Optional[str] = None,
 ) -> Dict:
     """
-    Main entry point — tries Groq first, falls back to rules.
+    Main entry point — tries Local LLM (Ollama) first, then Groq, falls back to rules.
     Always returns an explanation dict.
     """
-    # Try Groq if key is available
+    # 1. Try Local LLM first (e.g. Ollama qwen2.5:0.5b / tinydolphin)
+    local_result = await explain_with_local_llm(
+        selected_text, context, is_redacted, detection_type, confidence
+    )
+    if local_result:
+        local_result["source"] = "local_llm"
+        return local_result
+
+    # 2. Try Groq if key is available
     groq_result = await explain_with_groq(
         selected_text, context, is_redacted, detection_type, confidence
     )
@@ -198,7 +265,7 @@ async def get_explanation(
         groq_result["source"] = "ai"
         return groq_result
 
-    # Fallback to rule-based
+    # 3. Fallback to rule-based
     result = explain_with_rules(
         selected_text, context, is_redacted, detection_type, confidence, reason
     )

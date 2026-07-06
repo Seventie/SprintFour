@@ -12,3 +12,5 @@ spacy
 httpx
 openpyxl
 pandas
+gliner
+onnxruntime

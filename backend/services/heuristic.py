@@ -22,20 +22,6 @@ except Exception:
 # --- Pattern definitions ---
 # Each pattern: (compiled_regex, pii_type, base_confidence, reason_template)
 PATTERNS: List[Tuple[re.Pattern, str, float, str]] = [
-    # Indian PAN (permanent account number): ABCDE1234F
-    (
-        re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b'),
-        'IN_PAN',
-        0.95,
-        'Matches Indian PAN card format (XXXXX0000X) — high structural confidence.'
-    ),
-    # Indian Aadhaar: 1234 5678 9012 or 123456789012
-    (
-        re.compile(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'),
-        'IN_AADHAAR',
-        0.88,
-        'Matches 12-digit Aadhaar number pattern — verify with checksum.'
-    ),
     # Indian mobile: +91 9876543210 or 9876543210
     (
         re.compile(r'(?:\+91[\s-]?)?(?<!\d)[6-9]\d{9}(?!\d)'),
@@ -50,62 +36,20 @@ PATTERNS: List[Tuple[re.Pattern, str, float, str]] = [
         0.97,
         'Matches standard email format (user@domain.tld).'
     ),
-    # IPv4 address
+    # Strict IPv4 address (0-255 for each octet)
     (
-        re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
+        re.compile(r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'),
         'IP_ADDRESS',
-        0.82,
-        'Matches IPv4 address pattern (x.x.x.x).'
+        0.95,
+        'Matches strict IPv4 address format (0.0.0.0 to 255.255.255.255).'
     ),
-    # Date formats: DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY, YYYY-MM-DD
+    # IPv6 address
     (
-        re.compile(r'\b(?:\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}|\d{4}[/\-]\d{1,2}[/\-]\d{1,2})\b'),
-        'DATE_TIME',
-        0.72,
-        'Matches common date format — may be a non-sensitive date. Flagged for review.'
-    ),
-    # URLs
-    (
-        re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+'),
-        'URL',
-        0.80,
-        'Detected URL/web address — may contain identifying parameters.'
-    ),
-    # Credit card (basic Luhn-eligible 13-19 digit sequences)
-    (
-        re.compile(r'\b(?:\d[ -]*?){13,19}\b'),
-        'CREDIT_CARD',
-        0.70,
-        'Matches potential credit/debit card number pattern — verify with Luhn check.'
-    ),
-    # Hyphenated / Formatted Phone Numbers (e.g., 123-456-7890, +1-800-555-0199, (415) 555-0123)
-    (
-        re.compile(r'\b(?:\+\d{1,3}[\s-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s-]\d{3,4}[\s-]\d{4}\b'),
-        'PHONE_NUMBER',
+        re.compile(r'\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b|\b(?:[A-Fa-f0-9]{1,4}:){1,7}:|\b:(?::[A-Fa-f0-9]{1,4}){1,7}\b'),
+        'IP_ADDRESS',
         0.92,
-        'Matches hyphenated or structured phone number format.'
-    ),
-    # Salary / Currency / Financial amounts (e.g., $120,000, $85,500.00, 150,000 USD, INR 1,200,000)
-    (
-        re.compile(r'(?:[$€£¥₹]\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\b\d{1,3}(?:,\d{3})*(?:\.\d{2})?\s*(?:USD|INR|EUR|GBP|AUD|CAD)\b)'),
-        'SALARY_FINANCIAL',
-        0.88,
-        'Matches sensitive salary or currency financial amount.'
-    ),
-    # Grades, Pay Levels, and Classifications (e.g., Grade A, Grade 12, Pay Grade GS-14, Level 5, Score: 98)
-    (
-        re.compile(r'\b(?:Pay\s+)?(?:Grade|Level|Band|Rank|Class|Tier|Score)\s*[:#-]?\s*(?:[A-Z0-9]+(?:-[A-Z0-9]+)?)\b', re.IGNORECASE),
-        'GRADE_LEVEL',
-        0.85,
-        'Matches organizational pay grade, level, or evaluation score classification.'
-    ),
-    # Employee / ID numbers (e.g., Employee ID: E-8912, Staff No: 481923)
-    (
-        re.compile(r'\b(?:Employee|Staff|Personnel|Badge|Member|Account)\s*(?:ID|No|Number|#)\s*[:#-]?\s*([A-Z0-9-]+)\b', re.IGNORECASE),
-        'IDENTIFIER_NUMBER',
-        0.86,
-        'Matches organizational employee or staff identifier number.'
-    ),
+        'Matches IPv6 address pattern.'
+    )
 ]
 
 

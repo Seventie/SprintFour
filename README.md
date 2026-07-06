@@ -1,89 +1,82 @@
 # Conseal Hackathon Project (SprintFour 2026)
 
-# 🎥 Submission Video
-> **📺 Watch the demo here:**  
-> [(https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)](https://drive.google.com/file/d/11NdOjSVJNTC6HhrC5b6HfYACfX0Sf7WY/view?usp=sharing)
-
-
-
-> Little debugging after video was recorded : Had a bug in my code that wasnot redacting my text files and documents have solved the bug and below is the result and moved to local llm rather than groq api key 
-> <img width="1172" height="1042" alt="image" src="https://github.com/user-attachments/assets/9113c8cb-b104-4b8f-8ac5-5b83a6c6d908" />
-
-> **⚡ Recommended:** Watch the video at **1.5× playback speed** for a faster walkthrough, as the demo got long. Sorry :-<
-
-## ▶️ How to Watch at 1.5× Speed (Google Drive)
-
-1. Open the video using the link above.
-2. Click **View** in the top menu.
-3. Select **Playback speed**.
-4. Choose **1.5×**.
+Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
 ---
 
-> 💡 **Tip:** The video covers the complete workflow, architecture, implementation, and key features of our solution.
+## 🚀 How This Solves The Hackathon Prompt
 
-Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
+We engineered specific solutions for the 3 core personas in the prompt:
 
-## Key Capabilities & Supported Formats
+### **Problem 1: Trust and explainability (Marcus)**
+*Marcus won't adopt a tool he has to take on faith. He wants to know why something was hidden or kept.*
+- **Solution:** 100% Local-First processing ensures zero data leakage. We built an interactive **Reasoning Engine**: clicking *any* word (hidden or kept) reveals exactly why the ML classified it that way, building instant trust through transparency.
 
-Conseal natively supports multi-format document ingestion and processing:
-- **PDF Documents (`.pdf`)**: Layout extraction and interactive visual DOM rendering via `react-pdf` with real-time highlight synchronization and clickable link removal.
-- **Microsoft Word (`.docx`)**: Paragraph and table structure extraction with clean metadata sanitization.
-- **Spreadsheets (`.xlsx`, `.xls`, `.csv`)**: Full multi-sheet Excel workbook and CSV table parsing via `openpyxl` and `pandas`, allowing cell-by-cell PII detection and redaction.
-- **Plain Text (`.txt`)**: High-speed UTF-8 token analysis.
+### **Problem 2: Working at volume (Maya)**
+*Maya is a paralegal with 200 case files under extreme time pressure.*
+- **Solution:** We dropped slow cloud APIs in favor of **ONNX-optimized GLiNER** running on asynchronous FastAPI thread pools. To handle massive PDFs without blowing out RAM, we stream documents page-by-layer (PyMuPDF) and dynamically scale processing across all available CPU cores.
 
-## Core Architectural Features & UI/UX Innovations
+### **Problem 3: Fixing the tool's mistakes (Sam)**
+*Sam trusts the tool too much and moves fast, missing false positives and false negatives.*
+- **Solution:** We built a brutalist, **100% Keyboard-Driven UI** with bi-directional syncing. Sam can fly through 200 documents instantly using global hotkeys (`Ctrl+Shift+A` to bulk accept everything above 85% confidence, `Shift+D` to reject a file). If he spots an error, `Ctrl+Z` undoes even massive cross-file bulk actions instantly. 
 
-<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/430731c2-09a9-4d98-be5e-1beab930351f" />
+---
 
+## 🛠️ Core Architectural Highlights
 
-### 1. Dual-Layer AI Detection Engine with spaCy Token Precision
-- **Transformer NLP Layer**: Integrated spaCy transformer model (`en_core_web_trf`) and Microsoft Presidio for exact word-boundary entity extraction (PERSON, EMAIL, PHONE, SSN, CREDIT_CARD, MEDICAL_LICENSE, etc.).
-- **Heuristic & Regex Layer**: High-precision fallback matching rules with strict word-boundary alignment so tokens never get cut in half.
+1. **ONNX-Optimized GLiNER (Zero-Shot ML):** Dropped the 2GB+ PyTorch dependency for lightweight, instant-start ONNX runtime. Unlike Regex, GLiNER understands bidirectional context (knowing "Chase" is a bank, not a person).
+2. **Surgical XML Injection (DOCX):** Instead of highlighting entire paragraphs (run-bleeding), we wrote a custom algorithm directly on the underlying `lxml` tree to surgically split runs at exact character indices, guaranteeing pixel-perfect DOCX redactions without formatting corruption.
+3. **Smart Memory Management:** Heavy OCR models can cause OOM crashes. Our FastAPI workers use chunked streaming to process images page-by-page, allowing the Python garbage collector to free memory between chunks.
 
-### 2. Interactive Review Workspace & Custom Renaming
-- **Custom Synthetic Renaming / On-the-Fly Editing**: Users can click any detected or anonymized word and rename its synthetic label (e.g., rename `[John Doe]` to `[Client A]` or `[CEO]`).
-- **High-Speed Keyboard Shortcuts**: Reviewers can process documents at lightning speed without touching the mouse:
-  - `R` or `1`: Redact active item (Blackout)
-  - `A` or `2`: Anonymize active item (Synthetic Tag)
-  - `D` or `3`: Dismiss active item (Keep safe)
-  - `Tab` or `N` / `ArrowRight`: Jump to next unreviewed item
-  - `Ctrl + Z`: Undo last action
-- **Draggable & Floatable Reasoning Panel**: The Reasoning & Triage window can be docked to the sidebar, minimized into a floating pill (`⚡ Show Reasoning & Triage`), or detached into a draggable popover window positioned anywhere on the screen.
-- **Bidirectional Highlight Synchronization**: Selecting any word or entity in the Interactive Parsed View immediately highlights and pulses the matching text string directly inside the Original PDF Layout Preview using `react-pdf`.
-- **Per-Document & Per-Entity Security Mode**: Users can toggle between **Redact (Blackout)** and **Anonymize ([Tag])** modes on the file upload card or individual detections.
+---
 
-### 3. Total Export Sanitization & Security Audit Checklist
-- Exports clean documents in their native format (`.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`).
-- **Hidden Hyperlink & URI Neutralization**: Automatically identifies and deletes hidden clickable tracking links inside PDFs during redaction export.
-- **Metadata Sanitization**: Strips document metadata (author, title, creation dates, revision history) and provides explicit verification badges on the Export Hub screen.
+## 💻 Getting Started & Local Setup
 
-## Test Sample Suite (`test_samples/`)
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Two terminal windows.
 
-To quickly benchmark and validate the system across various real-world scenarios, 6 realistic test documents are included in the `test_samples/` directory:
-1. `Sample_Financial_Report_2026.pdf`: Formal audit report with executive compensation, SSNs, credit cards, and IP addresses.
-2. `Sample_Confidential_Letter.pdf`: Legal severance agreement with driver license numbers, bank routing codes, and personal addresses.
-3. `Sample_Executive_Memo.docx`: Internal board memorandum with wire routing numbers and sensitive attorney contact lines.
-4. `Sample_Medical_Notes.docx`: Clinical discharge summary with patient MRNs, physician medical license IDs, and insurance policy codes.
-5. `Sample_Customer_List.txt`: UTF-8 customer roster with credit card numbers and IP addresses.
-6. `Sample_Employee_Payroll.csv`: Spreadsheet with employee payroll, SSNs, and direct deposit details.
-
-## How to Run Locally
-
-### 1. Backend Service
+### Terminal 1: Backend Setup (FastAPI & ML Workers)
 ```bash
+# 1. Navigate to the backend directory
 cd backend
-python -m venv venv
-# Activate virtual environment (e.g., .\venv\Scripts\activate on Windows)
+
+# 2. Create and activate a virtual environment
+python -m venv .venv
+
+# On Windows:
+.\.venv\Scripts\activate
+# On Mac/Linux:
+source .venv/bin/activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Run the server
 uvicorn main:app --reload --port 8000
 ```
-API Documentation available at `http://localhost:8000/docs`.
+> **Note on First Run:** The very first time you upload a document, the backend will automatically download the ONNX GLiNER weights (about ~300MB). It may take 10-20 seconds for the very first file to process. Subsequent files will process in milliseconds.
 
-### 2. Frontend Web Client
+### Terminal 2: Frontend Setup (React & Vite)
 ```bash
+# 1. Navigate to the frontend directory
 cd frontend
+
+# 2. Install dependencies
 npm install
+
+# 3. Run the dev server
 npm run dev
 ```
-Web Application runs on `http://localhost:5173`.
+> The web application will be available at `http://localhost:5173`.
+
+---
+
+## 🧪 Test Sample Suite
+To quickly benchmark and validate the system, we have generated **12 brand new, highly complex official documents** spanning Medical, Legal, HR, Finance, and IT Security. 
+
+They are located in the root directory folder:
+📁 `sample_official_docs/`
+
+These contain names, SSNs, phone numbers, addresses, emails, credit cards, bank routing numbers, and URLs—perfect for testing the mixed GLiNER + regex PII policies! Simply drag and drop any of these files into the upload screen to test the system.

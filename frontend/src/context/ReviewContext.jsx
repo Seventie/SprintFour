@@ -1,4 +1,5 @@
-import { createContext, useReducer, useContext, useEffect } from 'react';
+import { createContext, useReducer, useContext, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 const ReviewContext = createContext();
 
@@ -56,6 +57,46 @@ function reviewReducer(state, action) {
         isProcessing: false,
       };
       return newState;
+    }
+    case 'BATCH_STARTED': {
+      const newDocs = action.payload; // array of {doc_id, filename, status}
+      // Initialize detections for each to empty array
+      const newDetections = {};
+      newDocs.forEach(d => {
+        newDetections[d.doc_id] = [];
+      });
+      return {
+        ...state,
+        documents: newDocs.map(d => ({ ...d, content: '' })),
+        detections: newDetections,
+        activeDocId: newDocs.length > 0 ? newDocs[0].doc_id : null,
+        history: [],
+      };
+    }
+    case 'UPDATE_DOCUMENT': {
+      const { doc_id, text, detections, status } = action.payload;
+      const newDocs = state.documents.map(d => d.doc_id === doc_id ? { ...d, content: text, status } : d);
+      let newActiveDocId = state.activeDocId;
+      
+      // Auto-switch to the first completed document if the current one is still processing
+      const currentActiveDoc = newDocs.find(d => d.doc_id === state.activeDocId);
+      if (status === 'COMPLETED' && currentActiveDoc && currentActiveDoc.status !== 'COMPLETED') {
+         newActiveDocId = doc_id;
+      }
+
+      return {
+        ...state,
+        documents: newDocs,
+        detections: { ...state.detections, [doc_id]: detections },
+        activeDocId: newActiveDocId
+      };
+    }
+    case 'UPDATE_DOCUMENT_PROGRESS': {
+      const { doc_id, chunks_processed, total_chunks, start_time, status } = action.payload;
+      return {
+        ...state,
+        documents: state.documents.map(d => d.doc_id === doc_id ? { ...d, chunks_processed, total_chunks, start_time, status } : d),
+      };
     }
     case 'SET_ACTIVE_DOC':
       return { ...state, activeDocId: action.payload };
@@ -139,6 +180,43 @@ function reviewReducer(state, action) {
         history: [...state.history, bulkHistory].slice(-20),
       };
     }
+    case 'BULK_ACCEPT_GLOBAL': {
+      const { threshold } = action.payload;
+      const newDetections = { ...state.detections };
+      const previousStates = [];
+
+      Object.keys(newDetections).forEach(docId => {
+        const docDets = newDetections[docId].map(d => {
+          if (d.status === 'missed' && d.confidence >= threshold) {
+            previousStates.push({ docId, detectionId: d.id, prevStatus: d.status });
+            return { ...d, status: 'redacted' };
+          }
+          return d;
+        });
+        newDetections[docId] = docDets;
+      });
+
+      const bulkHistory = { type: 'BULK_RESTORE_GLOBAL', payload: { previous: previousStates } };
+      return { ...state, detections: newDetections, history: [...state.history, bulkHistory].slice(-20) };
+    }
+    case 'BULK_REJECT_GLOBAL': {
+      const newDetections = { ...state.detections };
+      const previousStates = [];
+
+      Object.keys(newDetections).forEach(docId => {
+        const docDets = newDetections[docId].map(d => {
+          if (d.status === 'missed' || d.status === 'false_positive') {
+            previousStates.push({ docId, detectionId: d.id, prevStatus: d.status });
+            return { ...d, status: 'dismissed' };
+          }
+          return d;
+        });
+        newDetections[docId] = docDets;
+      });
+
+      const bulkHistory = { type: 'BULK_RESTORE_GLOBAL', payload: { previous: previousStates } };
+      return { ...state, detections: newDetections, history: [...state.history, bulkHistory].slice(-20) };
+    }
     case 'UNDO': {
       if (state.history.length === 0) return state;
       const lastAction = state.history[state.history.length - 1];
@@ -158,6 +236,15 @@ function reviewReducer(state, action) {
         });
         return { ...state, detections: { ...state.detections, [docId]: docDets }, history: newHistory };
       }
+      if (lastAction.type === 'BULK_RESTORE_GLOBAL') {
+        const { previous } = lastAction.payload;
+        const newDetections = { ...state.detections };
+        previous.forEach(({ docId, detectionId, prevStatus }) => {
+          if (!newDetections[docId]) return;
+          newDetections[docId] = newDetections[docId].map(d => d.id === detectionId ? { ...d, status: prevStatus } : d);
+        });
+        return { ...state, detections: newDetections, history: newHistory };
+      }
       return { ...state, history: newHistory };
     }
     case 'CLEAR_SESSION':
@@ -170,6 +257,7 @@ function reviewReducer(state, action) {
 
 export const ReviewProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reviewReducer, initialState);
+  const isPolling = useRef(false);
 
   // Persist to sessionStorage on every state change
   useEffect(() => {
@@ -177,6 +265,103 @@ export const ReviewProvider = ({ children }) => {
       saveSession(state);
     }
   }, [state.documents, state.detections, state.activeDocId, state.sidebarOpen]);
+
+  // Batch Streaming Poller
+  useEffect(() => {
+    const incompleteDocs = state.documents.filter(d => d.status !== 'COMPLETED' && d.status !== 'ERROR');
+    if (incompleteDocs.length === 0) return;
+
+    const poll = async () => {
+      if (isPolling.current) return;
+      isPolling.current = true;
+      try {
+        const { data } = await axios.get('http://localhost:8000/api/batch/progress');
+        const batchProgress = data.documents || {};
+        
+        let hasUpdates = false;
+        const updatesToDispatch = [];
+
+        const fetchPromises = [];
+
+        for (const doc of incompleteDocs) {
+          const progress = batchProgress[doc.doc_id];
+          if (progress) {
+            if (progress.status === 'COMPLETED') {
+              // Fetch full document progress to get text concurrently
+              fetchPromises.push((async () => {
+                try {
+                  const fullRes = await axios.get(`http://localhost:8000/api/batch/progress/${doc.doc_id}`);
+                  const fullProgress = fullRes.data;
+                  updatesToDispatch.push({
+                    type: 'UPDATE_DOCUMENT',
+                    payload: {
+                      doc_id: doc.doc_id,
+                      text: fullProgress.text,
+                      detections: fullProgress.detections,
+                      status: 'COMPLETED'
+                    }
+                  });
+                } catch (e) { console.error('Failed to fetch full doc', e); }
+              })());
+            } else if (progress.status === 'ERROR') {
+               updatesToDispatch.push({
+                type: 'UPDATE_DOCUMENT',
+                payload: {
+                  doc_id: doc.doc_id,
+                  text: 'Error processing document: ' + progress.error,
+                  detections: [],
+                  status: 'ERROR'
+                }
+              });
+            } else {
+               // Update progress
+               updatesToDispatch.push({
+                 type: 'UPDATE_DOCUMENT_PROGRESS',
+                 payload: {
+                   doc_id: doc.doc_id,
+                   chunks_processed: progress.chunks_processed,
+                   total_chunks: progress.total_chunks,
+                   start_time: progress.start_time,
+                   status: progress.status
+                 }
+               });
+            }
+          } else {
+            // Missing from tracker! Backend likely restarted.
+            updatesToDispatch.push({
+              type: 'UPDATE_DOCUMENT',
+              payload: {
+                doc_id: doc.doc_id,
+                text: 'Error: Processing interrupted. The backend server restarted or lost the task. Please upload the file again.',
+                detections: [],
+                status: 'ERROR'
+              }
+            });
+          }
+        }
+
+        // Wait for all concurrent full document fetches to finish
+        await Promise.all(fetchPromises);
+
+        // Apply updates
+        for (const update of updatesToDispatch) {
+          dispatch(update);
+          // Clear it from the server's RAM once we've successfully ingested it
+          if (update.type === 'UPDATE_DOCUMENT' && update.payload.status === 'COMPLETED') {
+            axios.delete(`http://localhost:8000/api/batch/progress/${update.payload.doc_id}`).catch(e => console.error('Failed to clear doc', e));
+          }
+        }
+
+      } catch (err) {
+        console.error("Batch polling error", err);
+      } finally {
+        isPolling.current = false;
+      }
+    };
+
+    const interval = setInterval(poll, 500);
+    return () => clearInterval(interval);
+  }, [state.documents]);
 
   return (
     <ReviewContext.Provider value={{ state, dispatch }}>

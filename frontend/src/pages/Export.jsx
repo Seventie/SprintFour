@@ -4,6 +4,7 @@ import { useReview } from '../context/ReviewContext';
 import { Download, ChevronLeft, ShieldCheck, AlertTriangle, FileText, CheckCircle, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import ExportDocViewer from '../components/export/ExportDocViewer';
+import AuditWidget from '../components/export/AuditWidget';
 
 const Export = () => {
   const { state, dispatch } = useReview();
@@ -14,7 +15,7 @@ const Export = () => {
   const [downloadComplete, setDownloadComplete] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewBlob, setPreviewBlob] = useState(null);
-  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [isAuditExpanded, setIsAuditExpanded] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [textPreviewContent, setTextPreviewContent] = useState(null);
   const [strippedMeta, setStrippedMeta] = useState([]);
@@ -125,6 +126,47 @@ const Export = () => {
       setIsExporting(false);
     }
   };
+
+  const handleBulkDownload = async (onlyProcessed) => {
+    setIsExporting(true);
+    try {
+      const docsToExport = documents.map(doc => {
+        const docDets = detections[doc.doc_id] || [];
+        const isProcessed = docDets.every(d => d.status !== 'missed');
+        
+        if (onlyProcessed && !isProcessed) return null;
+        
+        return {
+          doc_id: doc.doc_id,
+          filename: doc.filename,
+          detections: onlyProcessed ? docDets : [],
+          content: doc.content || doc.plain_text || '',
+          export_mode: doc.default_action_mode || 'redact'
+        };
+      }).filter(Boolean);
+
+      if (docsToExport.length === 0) {
+        alert("No documents match this criteria.");
+        setIsExporting(false);
+        return;
+      }
+
+      const resp = await axios.post('http://localhost:8000/api/export/bulk', { documents: docsToExport }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([resp.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', onlyProcessed ? 'Processed_Documents.zip' : 'Original_Documents.zip');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error(err);
+      alert('Bulk export failed.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   if (documents.length === 0) return null;
 
@@ -287,169 +329,71 @@ const Export = () => {
                     </div>
                     <div>
                       <span className="block text-black">spaCy Word-Boundary Protection</span>
-                      <span className="text-[10px] text-gray-600 font-normal block mt-0.5 leading-tight">{redactedCount} entities secured in native {activeDoc.file_type.toUpperCase()} layout</span>
+                      <span className="text-[10px] text-gray-600 font-normal block mt-0.5 leading-tight">{redactedCount} entities secured in native {activeDoc?.file_type?.toUpperCase()} layout</span>
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowAuditModal(true)}
-                  className="w-full mt-3 py-3 bg-card-yellow hover:bg-yellow-300 text-black font-bold text-xs rounded-2xl border-2 border-black shadow-brutalist-xs transition-all flex items-center justify-center gap-2"
-                >
-                  <span>🔍 View Itemized Audit Report</span>
-                </button>
               </div>
             </>
           )}
         </div>
 
         {/* Footer */}
-        {activeDoc && (
-          <div className="p-6 bg-white border-t-2 border-black">
-            <button
-              onClick={handleDownload}
-              disabled={isExporting || missedCount > 0}
-              className={`w-full flex items-center justify-center gap-3 py-4 rounded-full font-bold text-base uppercase tracking-wider transition-all duration-300 border-2 border-black shadow-retro ${
-                downloadComplete
-                  ? 'bg-secondary text-black scale-[1.02]'
-                  : missedCount > 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:shadow-retro-hover hover:-translate-y-1'
-              }`}
-            >
-              {downloadComplete ? (
-                <><CheckCircle className="w-5 h-5" /> Download Complete</>
-              ) : (
-                <><Download className="w-5 h-5" /> {isExporting ? 'Generating...' : missedCount > 0 ? 'Resolve Pending Items' : `Download ${exportMode === 'anonymize' ? 'Anonymized' : 'Redacted'} ${activeDoc.file_type.toUpperCase()}`}</>
-              )}
-            </button>
-          </div>
-        )}
+        <div className="p-6 bg-white border-t-2 border-black space-y-3">
+          {activeDoc && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  dispatch({ type: 'SET_ACTIVE_DOC', payload: activeDoc.doc_id });
+                  navigate('/review');
+                }}
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-white text-black border-2 border-black hover:-translate-y-0.5 transition-all shadow-brutalist-sm flex items-center justify-center gap-2 px-2"
+              >
+                <Eye className="w-4 h-4 shrink-0" /> <span className="hidden xl:inline">Review Again</span><span className="xl:hidden">Review</span>
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={isExporting || missedCount > 0}
+                className={`flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 border-2 border-black shadow-brutalist-sm px-2 ${
+                  downloadComplete
+                    ? 'bg-secondary text-black'
+                    : missedCount > 0
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-primary text-white hover:-translate-y-0.5'
+                }`}
+              >
+                <Download className="w-4 h-4 shrink-0" /> 
+                <span className="truncate">
+                  {isExporting ? 'Generating...' : missedCount > 0 ? 'Resolve' : `Download File`}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {documents.length > 1 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleBulkDownload(true)}
+                disabled={isExporting}
+                className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-900 border-2 border-black hover:-translate-y-0.5 transition-all shadow-brutalist-xs"
+              >
+                <Download className="w-3.5 h-3.5" /> All Processed
+              </button>
+              <button
+                onClick={() => handleBulkDownload(false)}
+                disabled={isExporting}
+                className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-bold text-xs bg-red-100 text-red-900 border-2 border-black hover:-translate-y-0.5 transition-all shadow-brutalist-xs"
+              >
+                <Download className="w-3.5 h-3.5" /> All Unprocessed
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
-      {/* Detailed Audit Modal */}
-      {showAuditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white border-4 border-black shadow-brutalist rounded-3xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-card-yellow border-b-4 border-black px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-6 h-6 text-black" />
-                <h3 className="font-display font-black text-lg text-black uppercase tracking-wider">Detailed Security Sanitization Audit</h3>
-              </div>
-              <button
-                onClick={() => setShowAuditModal(false)}
-                className="w-8 h-8 rounded-full bg-white border-2 border-black flex items-center justify-center font-bold hover:bg-gray-100 shadow-brutalist-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-6 text-xs text-gray-800">
-              {/* Metadata Section */}
-              <div className="bg-gray-50 border-2 border-black rounded-2xl p-4 shadow-brutalist-xs">
-                <h4 className="font-bold text-sm uppercase text-black mb-2 flex items-center justify-between font-mono">
-                  <span className="flex items-center gap-2">🗑️ Stripped Document Metadata Keys</span>
-                  <span className="bg-secondary text-black px-2 py-0.5 rounded-full text-[10px] font-bold border border-black">100% Wiped</span>
-                </h4>
-                <p className="text-gray-600 mb-3">All identifying author tags, device fingerprints, and creation timestamps have been purged from the binary header:</p>
-                <div className="space-y-2 font-mono">
-                  {(() => {
-                    const metaList = (strippedMeta && strippedMeta.length > 0)
-                      ? strippedMeta.filter(m => !m.includes('Hyperlink') && !m.includes('Interactive Link'))
-                      : [];
-                    const displayMeta = metaList.length > 0 ? metaList : [
-                      "Author Tag: 'Original Creator' ➔ [Purged]",
-                      "Creation Timestamp: '2026-06-30T...' ➔ [Wiped]",
-                      "Software Application Tool ➔ 'Conseal Redaction Engine'",
-                      "OS & Revision History Tags ➔ [Reset to Rev 1]"
-                    ];
-                    return displayMeta.map((item, i) => {
-                      const parts = item.split('➔');
-                      return (
-                        <div key={i} className="bg-white border border-black px-3 py-2 rounded-xl flex items-center justify-between text-[11px] shadow-brutalist-xs gap-2">
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <span className="text-red-600 font-bold">✖</span>
-                            <span className="font-bold text-gray-800 truncate">{parts[0]?.trim()}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-gray-400 font-bold">➔</span>
-                            <span className="bg-red-100 text-red-900 border border-red-500 px-2 py-0.5 rounded font-bold text-[10px]">{parts[1]?.trim() || '[Purged]'}</span>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-
-              {/* Clickable Links Section */}
-              <div className="bg-gray-50 border-2 border-black rounded-2xl p-4 shadow-brutalist-xs">
-                <h4 className="font-bold text-sm uppercase text-black mb-2 flex items-center justify-between font-mono">
-                  <span className="flex items-center gap-2">🔗 Clickable Hyperlink & URI Neutralization</span>
-                  <span className="bg-secondary text-black px-2 py-0.5 rounded-full text-[10px] font-bold border border-black">Detached</span>
-                </h4>
-                <p className="text-gray-600 mb-3">
-                  To prevent tracking pixel leakage or phishing redirects (e.g. clickable logos, embedded profile links), all active URIs and hidden hyperlinks have been detached:
-                </p>
-                <div className="space-y-2 font-mono">
-                  {(() => {
-                    const extractedLinks = [
-                      ...(strippedMeta || []).filter(m => m.includes('Hyperlink') || m.includes('Interactive Link')),
-                      ...redactedItems.filter(d => d.type === 'URL' || d.type === 'EMAIL_ADDRESS').map(d => `Embedded URI: '${d.text}' ➔ [Detached & Neutralized]`)
-                    ];
-                    const displayLinks = extractedLinks.length > 0 ? extractedLinks : [
-                      "Clickable Logo Link: 'https://github.com/profile' ➔ [Detached & Neutralized]",
-                      "Embedded Mailto URI: 'mailto:contact@domain.com' ➔ [Detached & Neutralized]"
-                    ];
-                    return displayLinks.map((item, i) => {
-                      const parts = item.split('➔');
-                      return (
-                        <div key={i} className="bg-white border border-black px-3 py-2 rounded-xl flex items-center justify-between text-[11px] shadow-brutalist-xs gap-2">
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <span className="text-emerald-600 font-bold">✔</span>
-                            <span className="font-bold text-gray-800 truncate">{parts[0]?.trim()}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-gray-400 font-bold">➔</span>
-                            <span className="bg-emerald-100 text-emerald-900 border border-emerald-500 px-2 py-0.5 rounded font-bold text-[10px]">{parts[1]?.trim() || '[Detached]'}</span>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-
-              {/* Redacted Entities Section */}
-              <div className="bg-gray-50 border-2 border-black rounded-2xl p-4 shadow-brutalist-xs">
-                <h4 className="font-bold text-sm uppercase text-black mb-2 flex items-center justify-between font-mono">
-                  <span>🔒 Secured PII Tokens ({redactedCount})</span>
-                  <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full">{exportMode.toUpperCase()} MODE</span>
-                </h4>
-                <div className="max-h-40 overflow-y-auto space-y-1 pr-1 font-mono">
-                  {redactedItems.map((det, idx) => (
-                    <div key={idx} className="bg-white border border-gray-300 px-3 py-1.5 rounded flex items-center justify-between text-[11px]">
-                      <span className="font-bold truncate max-w-[250px]">{det.text}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-card-blue px-2 py-0.5 rounded border border-black text-[9px] font-bold uppercase">{det.type}</span>
-                        <span className="text-gray-500 font-bold">→</span>
-                        <span className="bg-gray-200 px-2 py-0.5 rounded border border-black text-[9px] font-bold">
-                          {det.custom_replacement || (det.action_mode === 'anonymize' || exportMode === 'anonymize' ? `[${det.type}]` : '██████')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-100 border-t-2 border-black p-4 flex justify-end">
-              <button
-                onClick={() => setShowAuditModal(false)}
-                className="px-6 py-2 bg-primary text-white font-bold text-xs uppercase tracking-wider rounded-full border-2 border-black shadow-brutalist-xs"
-              >
-                Done Inspecting
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Floating Draggable Audit Widget */}
+      {activeDoc && (
+        <AuditWidget strippedMeta={strippedMeta} redactedItems={redactedItems} />
       )}
     </div>
   );

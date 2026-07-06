@@ -52,14 +52,20 @@ const Landing = () => {
         </div>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center w-full max-w-md px-4">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center w-full max-w-2xl px-4">
           <Link 
             to="/upload" 
-            className="bg-primary text-white text-lg px-10 py-4 rounded-full border-2 border-black font-bold shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3"
+            className="bg-primary text-white text-lg px-8 py-4 rounded-full border-2 border-black font-bold shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3"
           >
-            Open Redaction Workspace
+            Open Workspace
             <ArrowRight className="w-5 h-5" />
           </Link>
+          <a 
+            href="#how-it-works" 
+            className="bg-white dark:bg-card-dark text-gray-900 dark:text-white text-lg px-8 py-4 rounded-full border-2 border-black font-bold shadow-retro hover:shadow-retro-hover hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3"
+          >
+            Look at Policies
+          </a>
         </div>
       </header>
 
