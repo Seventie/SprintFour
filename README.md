@@ -1,5 +1,9 @@
 # Conseal Hackathon Project (SprintFour 2026)
 
+# 🎥 Submission Video
+> **📺 Watch the 5-Minute Demo here:**  
+> [https://drive.google.com/file/d/1xs1eIhO1er10vgzYdQZVjmuFyPA6jSVv/view](https://drive.google.com/file/d/1xs1eIhO1er10vgzYdQZVjmuFyPA6jSVv/view)
+
 Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
 ---
@@ -35,9 +39,9 @@ We engineered specific solutions for the 3 core personas in the prompt:
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- Two terminal windows.
+- **FOUR (4) Terminal Windows** must be launched concurrently for the parallel architecture to work correctly.
 
-### Terminal 1: Backend Setup (FastAPI & ML Workers)
+### Terminal 1: Backend API Server
 ```bash
 # 1. Navigate to the backend directory
 cd backend
@@ -70,6 +74,19 @@ npm install
 npm run dev
 ```
 > The web application will be available at `http://localhost:5173`.
+
+### Terminal 3 & 4: Distributed ML Workers (Parallel Processing)
+To achieve the high-speed volume processing demonstrated in the video, you must launch two additional ML worker nodes to share the load.
+```bash
+# In BOTH Terminal 3 and Terminal 4, run:
+cd backend
+# Activate the same virtual environment
+.\.venv\Scripts\activate  # (or source .venv/bin/activate on Mac/Linux)
+
+# Launch the dedicated batch worker processes
+python -m services.worker_pool
+```
+> **Note:** These workers will connect to the primary API server and pick up chunks of the PDF processing queue to prevent Out-Of-Memory errors.
 
 ---
 
