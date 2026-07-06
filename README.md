@@ -6,7 +6,7 @@
 > 
 > ⚡ **Tip:** We highly recommend watching the video at **1.25x speed**!
 
-Conseal is a state-of-the-art desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
+Conseal is a desktop application built to anonymize and redact documents by automatically detecting, classifying, and protecting Personally Identifiable Information (PII). This allows sensitive enterprise documents to be safely shared with AI tools without leaking private data.
 
 ---
 
